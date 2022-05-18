@@ -1,6 +1,7 @@
 use std::io::prelude::*;
 use std::io;
 use std::fs::File;
+use std::collections::BTreeMap;
 
 use num::*;
 use clap::Parser;
@@ -17,44 +18,30 @@ struct Timestamp{
     timestamp:   BigInt
 }
 
+struct Signal {
+    name          : String,
+    timeline      : BTreeMap<BigInt, BigInt>,
+    children_arena: Vec<usize>,
+    parent_index  : usize
+}
+
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
+    let space = " ".as_bytes()[0];
 
     let file       = File::open(&args.path)?;
     let mut reader = io::BufReader::new(file);
 
-    let mut buffer             = String::new();
-    let mut timestamp_offsets  = Vec::new();
-    let mut timestamps         = Vec::new();
+    let mut buffer = Vec::<u8>::new();
+    let mut word_count = 0u64;
 
     while {
-        let bytes_read = reader.read_line(&mut buffer).unwrap();
+        let bytes_read = reader.read_until(space, &mut buffer).unwrap();
         bytes_read > 0
     } {
-        if &buffer[0..1] == "#" {
-            let pos = reader.stream_position().unwrap();
-            timestamp_offsets.push(pos);
-
-            let timestamp = {
-                let len = buffer.len();
-                let str_val = &buffer[1..(len - 1)].as_bytes();
-                BigInt::parse_bytes(str_val, 10).unwrap()
-            };
-            timestamps.push(timestamp);
-        }
-        buffer.clear()
+        word_count += 1;
     }
-
-    let index = 4;
-    let timestamp_offset = timestamp_offsets.get(index).unwrap();
-    let timestamp        = timestamps.get(index).unwrap();
-    dbg!((timestamp_offset, timestamp));
-
-    // seek to where we found the first timestamp and read
-    // out the next line
-    reader.seek(io::SeekFrom::Start(*timestamp_offset));
-    reader.read_line(&mut buffer);
-    dbg!(buffer);
+    dbg!(word_count);
 
     Ok(())
 }

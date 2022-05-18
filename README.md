@@ -20,10 +20,7 @@ The first build of the program may take some time.
 ``cargo  run --release -- path/to/vcd/file``
 
 ## TODO
- - [x] Test positions with seeking
- - [x] vcd should be argument
- - [x] structure to store stream position against timestamp as string
- - [x] structure to store stream position against timestamp as BigInt
+ - [ ] We need a way to merge lines.
 
 ### April 14
  - [ ] store timestamps to struct
