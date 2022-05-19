@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 num = "0.4"
 clap = { version = "3.1.8", features = ["derive"] }
-next-gen = "0.1.1"
+chrono = "0.4"
