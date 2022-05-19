@@ -45,36 +45,29 @@ fn main() -> std::io::Result<()> {
     let file       = File::open(&args.path)?;
     let mut reader = io::BufReader::new(file);
 
-    let mut buffer = Vec::<u8>::new();
+    let mut buffer = String::new();
     let mut word_count = 0u64;
+    let mut do_break = false;
+    let line_chunk_size = 25;
 
-    // while {
-    //     let bytes_read = reader.read_until(b' ', &mut buffer).unwrap();
-    //     bytes_read > 0
-    // } {
-    //     word_count += 1;
+    while {!do_break} {
+        for _ in 0..line_chunk_size {
+            let bytes_read = reader.read_line(&mut buffer).unwrap();
+            if bytes_read == 0 {
+                do_break = true;
+                break
+            }
+        }
 
-    //     if word_count < 5 {
-    //         let string = std::str::from_utf8(&buffer).unwrap();
-    //         dbg!(string);
-    //     }
-    //     buffer.clear();
-    // }
-    loop {
-        buffer.clear();
-        let t = reader
-            .by_ref()
-            .bytes()
-            .map(|c| c.unwrap())
-            .take_while(|c| 
-                c != &b' ' && 
-                c != &b'\n');
-        buffer.extend(t);
-        word_count += 1;
+        let words = buffer.split_ascii_whitespace();
+
+        for word in words {
+            word_count += 1;
+        }
         
+        buffer.clear();
     }
-    let string = std::str::from_utf8(&buffer).unwrap();
-    dbg!(string);
+
     dbg!(word_count);
 
     Ok(())
