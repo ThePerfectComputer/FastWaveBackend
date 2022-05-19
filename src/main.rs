@@ -22,7 +22,7 @@ struct Signal {
 }
 
 
-#[generator(yield(String))]
+#[generator(yield(&str))]
 fn yield_words(file : File) {
     let mut reader = io::BufReader::new(file);
 
@@ -43,7 +43,7 @@ fn yield_words(file : File) {
         let words = buffer.split_ascii_whitespace();
 
         for word in words {
-            yield_!(word.to_string());
+            yield_!(word);
         }
         
         buffer.clear();
