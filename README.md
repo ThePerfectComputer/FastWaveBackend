@@ -19,22 +19,11 @@ The first build of the program may take some time.
 
 ``cargo run --release test-vcd-files/aldec/SPI_Write.vcd``
 
-## TODO
- - [ ] We need a way to merge lines.
+# TODO
+ - [x] We need a way to merge lines.
+ - [ ] We need to start regression testing the parser over all files
+ - [ ] Take a look at GTKWave parser to compare effificiency.
+ - [ ] Send survey to community channel.
 
-### April 14
- - [ ] store timestamps to struct
- - [ ] Get file loading status
- - [ ] Get all signal scopes
-
-### April 15
- - [ ] Re-factor to support hooks in the initial file ingest
- - [ ] Modularize
-
-### April 15
- - [ ] Build tree per signal.
- - [ ] Each signal also comes with a value change buffer to
-       avoid frequent disk readouts.
-
-# VCD Spec Questions
-- [ ] I'm pretty sure that only one statement per line is allowed.
+### May 18
+ - [ ] move while loop into word yielding iterator
