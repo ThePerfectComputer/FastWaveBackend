@@ -17,7 +17,7 @@ a large VCD file from
 
 The first build of the program may take some time.
 
-``cargo  run --release -- path/to/vcd/file``
+``cargo run --release test-vcd-files/aldec/SPI_Write.vcd``
 
 ## TODO
  - [ ] We need a way to merge lines.
