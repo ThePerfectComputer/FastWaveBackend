@@ -24,6 +24,7 @@ The first build of the program may take some time.
  - [ ] Need to perform signal aliasing
      - use vec of enum {Sig, Alias}
  - [ ] Should insert nodes in BFS order
+ - [ ] Change states to lowercase
  - [ ] We need to start regression testing the parser over all files
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.

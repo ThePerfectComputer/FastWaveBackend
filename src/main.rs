@@ -12,54 +12,113 @@ use clap::Parser;
 struct Cli {
     /// The path to the file to read
     #[clap(parse(from_os_str))]
-    path: std::path::PathBuf,
-}
+    path: std::path::PathBuf}
 
 
 // TODO: implement any timescales greater than a second
 enum Timescale {ps, ns, us, ms, s}
 
+struct Scope_Idx(usize);
+struct Signal_Idx(usize);
+
 struct Metadata {
-    date      : DateTime<FixedOffset>,
+    date      : DateTime<Utc>,
     version   : String,
-    timescale : Timescale
-}
+    timescale : Timescale}
 
 struct Signal {
-    name          : String,
-    timeline      : BTreeMap<BigInt, BigInt>,
-    children_arena: Vec<usize>,
-    parent_index  : usize
-
-} 
+    name           : String,
+    timeline       : BTreeMap<BigInt, BigInt>,
+    scope_parent   : Scope_Idx} 
 
 struct SignalAlias {
     name          : String,
-    signal_alias  : Rc<Signal>
-}
+    signal_alias  : Signal_Idx}
 
 enum SignalGeneric{
     Signal(Signal),
-    SignalAlias(SignalAlias),
-}
+    SignalAlias(SignalAlias)}
 
 struct Scope {
-    name    : String,
-    signals : Vec<SignalGeneric>,
-    scopes  : Vec<Scope>,
-}
+    name          : String,
+    child_signals : Vec<Signal_Idx>,
+    child_scopes  : Vec<Scope_Idx>}
 
 struct VCD {
-    metadata   : Metadata,
-    top_scopes : Vec<Scope>
+    metadata    : Metadata,
+    all_signals : Vec<SignalGeneric>,
+    // the root scope should always be placed at index 0
+    all_scopes  : Vec<Scope>}
+
+#[derive(Debug)]
+enum Date_Parser_State {Weekday, Month, Day, HHMMSS, Year}
+#[derive(Debug)]
+enum VCD_Parser_State {
+    Begin, 
+    Date(Date_Parser_State),
+    Signal_Tree, Values}
+
+struct DateBuffer {
+    Weekday : String,
+    Month   : String,
+    Day     : String,
+    HHMMSS  : String,
+    Year    : String}
+
+struct VCD_Parser<'a> {
+    vcd_parser_state   : VCD_Parser_State,
+    date_parser_state  : Date_Parser_State,
+    date_buffer        : DateBuffer,
+
+    vcd                : &'a VCD,
+    curr_scope         : &'a Scope,
+    curr_parent_scope  : &'a Scope}
+
+impl VCD {
+    pub fn new() -> Self {
+        let dt = Utc
+                 .datetime_from_str("Thu Jan 1 00:00:00 1970", "%a %b %e %T %Y")
+                 .unwrap();
+        let metadata = Metadata {
+            date      : dt,
+            version   : "".to_string(),
+            timescale : Timescale::ps};
+        let signal = Vec::<SignalGeneric>::new();
+        VCD {
+            metadata    : metadata,
+            all_signals : Vec::<SignalGeneric>::new(),
+            all_scopes  : Vec::<Scope>::new()}}}
+
+impl<'a> VCD_Parser<'a> {
+    pub fn new(&mut self, vcd : &'a VCD) {
+        self.vcd_parser_state  = VCD_Parser_State::Begin;
+        self.date_parser_state = Date_Parser_State::Weekday;
+        self.vcd = vcd;}
+
+    pub fn parse_word(&mut self, word : &str) -> Result<(), String> {
+        let mut state = &mut self.vcd_parser_state;
+        match state {
+            VCD_Parser_State::Begin => {
+                match word {
+                    "$date"      => {*state = VCD_Parser_State::Date(Date_Parser_State::Weekday); Ok(())},
+                    // "$version"   => {*state = VCD_Parser_State::VERSION_ENTER; Ok(())},
+                    // "$timescale" => {*state = VCD_Parser_State::TIMESCALE_ENTER; Ok(())},
+                    _            => Err(format!("unsure what to do with {word:?}"))}},
+
+            VCD_Parser_State::Date(Date_Parser_State) => {
+                let res = self.parse_date(word); Ok(())
+                }
+            _   => Err(format!("parser in bad state : {state:?}"))}
+    }
+
+    pub fn parse_date(&mut self, word : &str) -> Result<(), String> {
+        let mut state = &mut self.date_parser_state;
+        Ok(())
+    }
 }
 
-
-enum VCD_Parser_State {Date, Version, Timescale, SignalTree, Values}
-enum Date_Parser_State {Date, Day, Month, HHMMSS, Year}
-
-fn parse_vcd(word: &str, mut state : VCD_Parser_State) {}
-fn parse_date(word : &str, mut state : Date_Parser_State) {}
+fn advance_VCD_parser_FSM(word: &str, mut state : VCD_Parser_State) {}
+fn advance_Date_parser_FSM(word : &str, mut state : Date_Parser_State) {}
 
 fn yield_word_and_apply(file : File, mut f : impl FnMut(&str)) {
     let mut reader = io::BufReader::new(file);
