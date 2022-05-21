@@ -105,15 +105,27 @@ impl<'a> VCD_Parser<'a> {
                     // "$timescale" => {*state = VCD_Parser_State::TIMESCALE_ENTER; Ok(())},
                     _            => Err(format!("unsure what to do with {word:?}"))}},
 
-            VCD_Parser_State::Date(Date_Parser_State) => {
-                let res = self.parse_date(word); Ok(())
-                }
+            VCD_Parser_State::Date(_) => self.parse_date(word),
             _   => Err(format!("parser in bad state : {state:?}"))}
     }
 
     pub fn parse_date(&mut self, word : &str) -> Result<(), String> {
-        let mut state = &mut self.date_parser_state;
-        Ok(())
+        let mut state = &mut self.vcd_parser_state;
+        match state {
+            VCD_Parser_State::Date(Date_Parser_State::Weekday) =>
+                {
+                    self.date_buffer.Weekday = word.to_string();
+                    *state = VCD_Parser_State::Date(Date_Parser_State::Month);
+                    Ok(())
+                }
+            VCD_Parser_State::Date(Date_Parser_State::Month) =>
+                {
+                    self.date_buffer.Month = word.to_string();
+                    *state = VCD_Parser_State::Date(Date_Parser_State::Day);
+                    Ok(())
+                }
+            _   => Err(format!("unsure what to do with {state:?}")),
+        }
     }
 }
 
