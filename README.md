@@ -1,3 +1,6 @@
+# Disclaimer
+PROPRIETARY - Copyright - Yehowshua Immanuel
+
 # The Beginnings of a high-performance, low memory footprint VCD Viewer in Rust for massive multi-GB waveforms
 
 ## Features
