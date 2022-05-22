@@ -3,10 +3,12 @@ PROPRIETARY - Copyright - Yehowshua Immanuel
 
 # The Beginnings of a high-performance, low memory footprint VCD Viewer in Rust for massive multi-GB waveforms
 
-## Features
+## Current Features
  - very fast
- - loads 200MB of VCD waveform per second on an 8 core 2017 desktop CPU with NVMe storage
+ - loads 400MB of VCD waveform per second on an 8 core 2017 desktop CPU with NVMe storage
  - consumes roughly between 10 - 50MB of memory per GB of waveform
+
+## Planed Features
  - elegant/pretty UI
  - can be easily ported to work in browser via webassembly
  - allows high-performance custom Rust plugins to manipulate and
