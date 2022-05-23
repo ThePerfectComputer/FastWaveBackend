@@ -26,15 +26,12 @@ struct Scope_Idx(usize);
 struct Signal_Idx(usize);
 
 #[derive(Debug)]
-enum Date {No_Date, Date(DateTime<Utc>)}
-
-#[derive(Debug)]
-enum Version {No_Version, Version(String)}
+struct Version(String);
 
 #[derive(Debug)]
 struct Metadata {
-    date      : Date,
-    version   : Version,
+    date      : Option<DateTime<Utc>>,
+    version   : Option<Version>,
     timescale : Timescale}
 
 #[derive(Debug)]
@@ -62,15 +59,18 @@ struct VCD {
     // the root scope should always be placed at index 0
     all_scopes  : Vec<Scope>}
 
+// TODO : Date_PArser_State -> Parse_Date
 #[derive(Debug)]
 enum Date_Parser_State {Weekday, Month, Day, HHMMSS, Year, End}
+#[derive(Debug)]
+enum Version_Parser_State {Parsing, Done}
 
 
 #[derive(Debug)]
 enum VCD_Parser_State {
     Begin, 
     Date(Date_Parser_State),
-    Parse_Version, 
+    Parse_Version(Version_Parser_State), 
     Parse_Signal_Tree,
     Parse_Signal_Values}
 
@@ -96,8 +96,8 @@ impl VCD {
                  .datetime_from_str("Thu Jan 1 00:00:00 1970", "%a %b %e %T %Y")
                  .unwrap();
         let metadata = Metadata {
-            date      : Date::No_Date,
-            version   : Version::No_Version,
+            date      : None,
+            version   : None,
             timescale : Timescale::unit};
         let signal = Vec::<SignalGeneric>::new();
         VCD {
@@ -135,6 +135,7 @@ impl<'a> VCD_Parser<'a> {
                     _ => Err(format!("unsure what to do with {word:?} in state `{state:?}`"))
                 }
             VCD_Parser_State::Date(_) => self.parse_date(word),
+            VCD_Parser_State::Parse_Version(_) => self.parse_date(word),
             // TODO : Enable the following in production
             // _ => Err(format!("parser in bad state : {state:?}"))TODO : Disable the following in production
             // TODO : Disable the following in production
@@ -185,7 +186,7 @@ impl<'a> VCD_Parser<'a> {
                     let dt   = Utc.datetime_from_str(date, "%a %b %e %T %Y")
                     .expect(&format!("invalid date {date}")[..]);
 
-                    self.vcd.metadata.date = Date::Date(dt);
+                    self.vcd.metadata.date = Some(dt);
 
                     *state = VCD_Parser_State::Date(Date_Parser_State::End);
                     Ok(())
@@ -194,7 +195,10 @@ impl<'a> VCD_Parser<'a> {
                 {
                 let expected_word = "$end";
                 match word {
-                    expected_word => {*state = VCD_Parser_State::Parse_Version; Ok(())}
+                    expected_word => {
+                        *state = VCD_Parser_State::Parse_Version(Version_Parser_State::Parsing);
+                        Ok(())
+                    }
                     _ => Err(format!("expected `{expected_word}` but found `{word}`"))
                 }
                 }
@@ -202,9 +206,6 @@ impl<'a> VCD_Parser<'a> {
         }
     }
 }
-
-fn advance_VCD_parser_FSM(word: &str, mut state : VCD_Parser_State) {}
-fn advance_Date_parser_FSM(word : &str, mut state : Date_Parser_State) {}
 
 fn yield_word_and_apply(file : File, mut f : impl FnMut(&str) -> Result<(), String>) {
     let mut reader = io::BufReader::new(file);
