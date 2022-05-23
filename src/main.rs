@@ -16,34 +16,46 @@ struct Cli {
 
 
 // TODO: implement any timescales greater than a second
-enum Timescale {ps, ns, us, ms, s}
+#[derive(Debug)]
+enum Timescale {ps, ns, us, ms, s, unit}
 
+#[derive(Debug)]
 struct Scope_Idx(usize);
+
+#[derive(Debug)]
 struct Signal_Idx(usize);
 
+#[derive(Debug)]
+enum Date {No_Date, Date(DateTime<Utc>)}
+
+#[derive(Debug)]
+enum Version {No_Version, Version(String)}
+
+#[derive(Debug)]
 struct Metadata {
-    date      : DateTime<Utc>,
-    version   : String,
+    date      : Date,
+    version   : Version,
     timescale : Timescale}
 
-struct Signal {
-    name           : String,
-    timeline       : BTreeMap<BigInt, BigInt>,
-    scope_parent   : Scope_Idx} 
-
-struct SignalAlias {
-    name          : String,
-    signal_alias  : Signal_Idx}
-
+#[derive(Debug)]
 enum SignalGeneric{
-    Signal(Signal),
-    SignalAlias(SignalAlias)}
+    Signal{
+        name           : String,
+        timeline       : BTreeMap<BigInt, BigInt>,
+        scope_parent   : Scope_Idx},
+    SignalAlias{
+        name          : String,
+        signal_alias  : Signal_Idx}
+}
 
+#[derive(Debug)]
 struct Scope {
     name          : String,
     child_signals : Vec<Signal_Idx>,
     child_scopes  : Vec<Scope_Idx>}
 
+
+#[derive(Debug)]
 struct VCD {
     metadata    : Metadata,
     all_signals : Vec<SignalGeneric>,
@@ -51,7 +63,8 @@ struct VCD {
     all_scopes  : Vec<Scope>}
 
 #[derive(Debug)]
-enum Date_Parser_State {Weekday, Month, Day, HHMMSS, Year}
+enum Date_Parser_State {Weekday, Month, Day, HHMMSS, Year, End}
+
 
 #[derive(Debug)]
 enum VCD_Parser_State {
@@ -62,11 +75,11 @@ enum VCD_Parser_State {
     Parse_Signal_Values}
 
 struct DateBuffer {
-    Weekday : String,
-    Month   : String,
-    Day     : String,
-    HHMMSS  : String,
-    Year    : String}
+    Weekday : Option<String>,
+    Month   : Option<String>,
+    Day     : Option<String>,
+    HHMMSS  : Option<String>,
+    Year    : Option<String>}
 
 struct VCD_Parser<'a> {
     vcd_parser_state   : VCD_Parser_State,
@@ -74,8 +87,8 @@ struct VCD_Parser<'a> {
     date_buffer        : DateBuffer,
 
     vcd                : &'a mut VCD,
-    curr_scope         : &'a Scope,
-    curr_parent_scope  : &'a Scope}
+    curr_scope         : Option<&'a Scope>,
+    curr_parent_scope  : Option<&'a Scope>}
 
 impl VCD {
     pub fn new() -> Self {
@@ -83,9 +96,9 @@ impl VCD {
                  .datetime_from_str("Thu Jan 1 00:00:00 1970", "%a %b %e %T %Y")
                  .unwrap();
         let metadata = Metadata {
-            date      : dt,
-            version   : "".to_string(),
-            timescale : Timescale::ps};
+            date      : Date::No_Date,
+            version   : Version::No_Version,
+            timescale : Timescale::unit};
         let signal = Vec::<SignalGeneric>::new();
         VCD {
             metadata    : metadata,
@@ -93,27 +106,40 @@ impl VCD {
             all_scopes  : Vec::<Scope>::new()}}}
 
 impl<'a> VCD_Parser<'a> {
-    pub fn new(&mut self, vcd : &'a mut VCD) {
-        self.vcd_parser_state  = VCD_Parser_State::Begin;
-        self.date_parser_state = Date_Parser_State::Weekday;
-        self.vcd = vcd;}
+    pub fn new(vcd : &'a mut VCD) -> Self {
+        let date_buffer = DateBuffer{
+            Weekday : None,
+            Month   : None,
+            Day     : None,
+            HHMMSS  : None,
+            Year    : None
+        };
+        VCD_Parser {
+            vcd_parser_state : VCD_Parser_State ::Begin,
+            date_parser_state : Date_Parser_State::Weekday,
+            date_buffer : date_buffer,
+            vcd : vcd,
+            curr_scope : None,
+            curr_parent_scope : None
+
+        }
+    }
 
     pub fn parse_word(&mut self, word : &str) -> Result<(), String> {
         let mut state = &mut self.vcd_parser_state;
+        let t = &self.vcd;
         match state {
-            VCD_Parser_State::Begin => {
+            VCD_Parser_State::Begin =>  
                 match word {
-                    "$date"      => 
-                    {
-                        *state = VCD_Parser_State::Date(Date_Parser_State::Weekday);
-                        Ok(())
-                    }
-                    // "$version"   => {*state = VCD_Parser_State::VERSION_ENTER; Ok(())},
-                    // "$timescale" => {*state = VCD_Parser_State::TIMESCALE_ENTER; Ok(())},
-                    _            => Err(format!("unsure what to do with {word:?}"))}},
-
+                    "$date" => {*state = VCD_Parser_State::Date(Date_Parser_State::Weekday); Ok(())}
+                    _ => Err(format!("unsure what to do with {word:?} in state `{state:?}`"))
+                }
             VCD_Parser_State::Date(_) => self.parse_date(word),
-            _   => Err(format!("parser in bad state : {state:?}"))}
+            // TODO : Enable the following in production
+            // _ => Err(format!("parser in bad state : {state:?}"))TODO : Disable the following in production
+            // TODO : Disable the following in production
+            _ => Err(format!("parser in bad state : {state:?}; {t:?}"))
+        }
     }
 
     pub fn parse_date(&mut self, word : &str) -> Result<(), String> {
@@ -121,47 +147,56 @@ impl<'a> VCD_Parser<'a> {
         match state {
             VCD_Parser_State::Date(Date_Parser_State::Weekday) =>
                 {
-                    self.date_buffer.Weekday = word.to_string();
+                    self.date_buffer.Weekday = Some(word.to_string());
                     *state = VCD_Parser_State::Date(Date_Parser_State::Month);
                     Ok(())
                 }
             VCD_Parser_State::Date(Date_Parser_State::Month) =>
                 {
-                    self.date_buffer.Month = word.to_string();
+                    self.date_buffer.Month = Some(word.to_string());
                     *state = VCD_Parser_State::Date(Date_Parser_State::Day);
                     Ok(())
                 }
             VCD_Parser_State::Date(Date_Parser_State::Day) =>
                 {
-                    self.date_buffer.Day = word.to_string();
+                    self.date_buffer.Day = Some(word.to_string());
                     *state = VCD_Parser_State::Date(Date_Parser_State::HHMMSS);
                     Ok(())
                 }
             VCD_Parser_State::Date(Date_Parser_State::HHMMSS) =>
                 {
-                    self.date_buffer.HHMMSS = word.to_string();
+                    self.date_buffer.HHMMSS = Some(word.to_string());
                     *state = VCD_Parser_State::Date(Date_Parser_State::Year);
                     Ok(())
                 }
             VCD_Parser_State::Date(Date_Parser_State::Year) =>
                 {
-                    self.date_buffer.Year = word.to_string();
+                    self.date_buffer.Year = Some(word.to_string());
 
                     // now that we've successfully parsed all the date information,
-                    // we store it to a d
-                    let weekday = &self.date_buffer.Weekday;
-                    let month   = &self.date_buffer.Month;
-                    let day     = &self.date_buffer.Day;
-                    let hhmmss  = &self.date_buffer.HHMMSS;
-                    let year    = &self.date_buffer.Year;
+                    // we store it to the metadata.date struct
+                    let weekday = &self.date_buffer.Weekday.as_ref().unwrap();
+                    let month   = &self.date_buffer.Month.as_ref().unwrap();
+                    let day     = &self.date_buffer.Day.as_ref().unwrap();
+                    let hhmmss  = &self.date_buffer.HHMMSS.as_ref().unwrap();
+                    let year    = &self.date_buffer.Year.as_ref().unwrap();
 
                     let date = &format!("{weekday} {month} {day} {hhmmss} {year}")[..];
-                    let dt   = Utc.datetime_from_str(date, "%a %b %e %T %Y").unwrap();
+                    let dt   = Utc.datetime_from_str(date, "%a %b %e %T %Y")
+                    .expect(&format!("invalid date {date}")[..]);
 
-                    self.vcd.metadata.date = dt;
+                    self.vcd.metadata.date = Date::Date(dt);
 
-                    *state = VCD_Parser_State::Parse_Version;
+                    *state = VCD_Parser_State::Date(Date_Parser_State::End);
                     Ok(())
+                }
+            VCD_Parser_State::Date(Date_Parser_State::End) =>
+                {
+                let expected_word = "$end";
+                match word {
+                    expected_word => {*state = VCD_Parser_State::Parse_Version; Ok(())}
+                    _ => Err(format!("expected `{expected_word}` but found `{word}`"))
+                }
                 }
             _   => Err(format!("{state:?} should be unreachable within DateParser.")),
         }
@@ -171,11 +206,10 @@ impl<'a> VCD_Parser<'a> {
 fn advance_VCD_parser_FSM(word: &str, mut state : VCD_Parser_State) {}
 fn advance_Date_parser_FSM(word : &str, mut state : Date_Parser_State) {}
 
-fn yield_word_and_apply(file : File, mut f : impl FnMut(&str)) {
+fn yield_word_and_apply(file : File, mut f : impl FnMut(&str) -> Result<(), String>) {
     let mut reader = io::BufReader::new(file);
 
     let mut buffer = String::new();
-    let mut word_count = 0u64;
     let mut EOF = false;
     let line_chunk_size = 25;
 
@@ -191,7 +225,7 @@ fn yield_word_and_apply(file : File, mut f : impl FnMut(&str)) {
         let words = buffer.split_ascii_whitespace();
 
         for word in words {
-            f(word);
+            f(word).unwrap();
         }
         
         buffer.clear();
@@ -202,12 +236,13 @@ fn yield_word_and_apply(file : File, mut f : impl FnMut(&str)) {
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
 
-    // let dt = Utc.datetime_from_str("Fri Nov 28 12:00:09 2014", "%a %b %e %T %Y");
-
     let file           = File::open(&args.path)?;
-    let mut word_count = 0;
 
-    yield_word_and_apply(file, |word| {word_count += 1});
-    dbg!(word_count);
+    let mut vcd = VCD::new();
+    let mut parser = VCD_Parser::new(&mut vcd);
+
+    yield_word_and_apply(file, |word| {parser.parse_word(word)});
+    dbg!(&vcd);
+
     Ok(())
 }

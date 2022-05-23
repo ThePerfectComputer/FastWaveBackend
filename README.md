@@ -26,16 +26,12 @@ The first build of the program may take some time.
 
 # TODO
  - [x] We need a way to merge lines.
- - [ ] Need to perform signal aliasing
-     - use vec of enum {Sig, Alias}
+ - [ ] Include line and possible column numbers
  - [ ] Should insert nodes in BFS order
  - [ ] Change states to lowercase
  - [ ] We need to start regression testing the parser over all files
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.
-
-### May 18
- - [ ] move while loop into word yielding iterator
 
 # Files
  - ./test-vcd-files/aldec/SPI_Write.vcd
