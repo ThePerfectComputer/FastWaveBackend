@@ -4,6 +4,7 @@ use std::fs::File;
 use std::collections::BTreeMap;
 use chrono::prelude::*;
 use std::rc::Rc;
+use ::function_name::named;
 
 use num::*;
 use clap::Parser;
@@ -59,32 +60,25 @@ struct VCD {
     // the root scope should always be placed at index 0
     all_scopes  : Vec<Scope>}
 
-// TODO : Date_PArser_State -> Parse_Date
 #[derive(Debug)]
-enum Date_Parser_State {Weekday, Month, Day, HHMMSS, Year, End}
+enum Date_Parser_State {Begin, Parsing}
 #[derive(Debug)]
-enum Version_Parser_State {Parsing, Done}
+enum Version_Parser_State {Begin, Parsing}
+#[derive(Debug)]
+enum Timescale_Parser_State {Begin, Parsing}
 
 
 #[derive(Debug)]
-enum VCD_Parser_State {
-    Begin, 
+enum Parser_State {
     Date(Date_Parser_State),
-    Parse_Version(Version_Parser_State), 
+    Version(Version_Parser_State), 
+    Timescale(Timescale_Parser_State), 
     Parse_Signal_Tree,
     Parse_Signal_Values}
 
-struct DateBuffer {
-    Weekday : Option<String>,
-    Month   : Option<String>,
-    Day     : Option<String>,
-    HHMMSS  : Option<String>,
-    Year    : Option<String>}
-
 struct VCD_Parser<'a> {
-    vcd_parser_state   : VCD_Parser_State,
-    date_parser_state  : Date_Parser_State,
-    date_buffer        : DateBuffer,
+    vcd_parser_state   : Parser_State,
+    buffer             : Option<String>,
 
     vcd                : &'a mut VCD,
     curr_scope         : Option<&'a Scope>,
@@ -107,21 +101,13 @@ impl VCD {
 
 impl<'a> VCD_Parser<'a> {
     pub fn new(vcd : &'a mut VCD) -> Self {
-        let date_buffer = DateBuffer{
-            Weekday : None,
-            Month   : None,
-            Day     : None,
-            HHMMSS  : None,
-            Year    : None
-        };
         VCD_Parser {
-            vcd_parser_state : VCD_Parser_State ::Begin,
-            date_parser_state : Date_Parser_State::Weekday,
-            date_buffer : date_buffer,
+            vcd_parser_state : Parser_State::Date(Date_Parser_State::Begin),
+
+            buffer      : None,
             vcd : vcd,
             curr_scope : None,
             curr_parent_scope : None
-
         }
     }
 
@@ -129,13 +115,8 @@ impl<'a> VCD_Parser<'a> {
         let mut state = &mut self.vcd_parser_state;
         let t = &self.vcd;
         match state {
-            VCD_Parser_State::Begin =>  
-                match word {
-                    "$date" => {*state = VCD_Parser_State::Date(Date_Parser_State::Weekday); Ok(())}
-                    _ => Err(format!("unsure what to do with {word:?} in state `{state:?}`"))
-                }
-            VCD_Parser_State::Date(_) => self.parse_date(word),
-            VCD_Parser_State::Parse_Version(_) => self.parse_date(word),
+            Parser_State::Date(_) => self.parse_date(word),
+            Parser_State::Version(_) => self.parse_version(word),
             // TODO : Enable the following in production
             // _ => Err(format!("parser in bad state : {state:?}"))TODO : Disable the following in production
             // TODO : Disable the following in production
@@ -143,66 +124,84 @@ impl<'a> VCD_Parser<'a> {
         }
     }
 
+    #[named]
     pub fn parse_date(&mut self, word : &str) -> Result<(), String> {
         let mut state = &mut self.vcd_parser_state;
         match state {
-            VCD_Parser_State::Date(Date_Parser_State::Weekday) =>
-                {
-                    self.date_buffer.Weekday = Some(word.to_string());
-                    *state = VCD_Parser_State::Date(Date_Parser_State::Month);
-                    Ok(())
-                }
-            VCD_Parser_State::Date(Date_Parser_State::Month) =>
-                {
-                    self.date_buffer.Month = Some(word.to_string());
-                    *state = VCD_Parser_State::Date(Date_Parser_State::Day);
-                    Ok(())
-                }
-            VCD_Parser_State::Date(Date_Parser_State::Day) =>
-                {
-                    self.date_buffer.Day = Some(word.to_string());
-                    *state = VCD_Parser_State::Date(Date_Parser_State::HHMMSS);
-                    Ok(())
-                }
-            VCD_Parser_State::Date(Date_Parser_State::HHMMSS) =>
-                {
-                    self.date_buffer.HHMMSS = Some(word.to_string());
-                    *state = VCD_Parser_State::Date(Date_Parser_State::Year);
-                    Ok(())
-                }
-            VCD_Parser_State::Date(Date_Parser_State::Year) =>
-                {
-                    self.date_buffer.Year = Some(word.to_string());
-
-                    // now that we've successfully parsed all the date information,
-                    // we store it to the metadata.date struct
-                    let weekday = &self.date_buffer.Weekday.as_ref().unwrap();
-                    let month   = &self.date_buffer.Month.as_ref().unwrap();
-                    let day     = &self.date_buffer.Day.as_ref().unwrap();
-                    let hhmmss  = &self.date_buffer.HHMMSS.as_ref().unwrap();
-                    let year    = &self.date_buffer.Year.as_ref().unwrap();
-
-                    let date = &format!("{weekday} {month} {day} {hhmmss} {year}")[..];
-                    let dt   = Utc.datetime_from_str(date, "%a %b %e %T %Y")
-                    .expect(&format!("invalid date {date}")[..]);
-
-                    self.vcd.metadata.date = Some(dt);
-
-                    *state = VCD_Parser_State::Date(Date_Parser_State::End);
-                    Ok(())
-                }
-            VCD_Parser_State::Date(Date_Parser_State::End) =>
-                {
-                let expected_word = "$end";
+            Parser_State::Date(Date_Parser_State::Begin) =>
                 match word {
-                    expected_word => {
-                        *state = VCD_Parser_State::Parse_Version(Version_Parser_State::Parsing);
+                    "$date" => {
+                        *state = Parser_State::Date(Date_Parser_State::Parsing); 
                         Ok(())
                     }
-                    _ => Err(format!("expected `{expected_word}` but found `{word}`"))
+                    _ => {
+                        *state = Parser_State::Version(Version_Parser_State::Begin); 
+                        self.parse_version(word);
+                        Ok(())
+                    }
                 }
+            Parser_State::Date(Date_Parser_State::Parsing) =>
+                match word {
+                    "$end" => {
+                        *state = Parser_State::Version(Version_Parser_State::Begin); 
+                        let s  = self.buffer.take().unwrap();
+                        let dt = Utc.datetime_from_str(s.as_str(), "%a %b %e %T %Y")
+                            .expect(&format!("invalid date {s}").as_str());
+                        self.vcd.metadata.date = Some(dt);
+                        Ok(())
+                    }
+                    _ => {
+                        if let Some(ref mut buffer) = self.buffer {
+                            buffer.push_str(" ");
+                            buffer.push_str(word);
+                        }
+                        else {
+                            self.buffer = Some(word.to_string());
+                        }
+                        Ok(())
+                    }
                 }
-            _   => Err(format!("{state:?} should be unreachable within DateParser.")),
+            _   => Err(format!("{state:?} should be unreachable within {}.",function_name!())),
+
+        }
+    }
+
+    #[named]
+    pub fn parse_version(&mut self, word : &str) -> Result<(), String> {
+        let mut state = &mut self.vcd_parser_state;
+        match state {
+            Parser_State::Version(Version_Parser_State::Begin) =>
+                match word {
+                    "$version" => {
+                        *state = Parser_State::Version(Version_Parser_State::Parsing); 
+                        Ok(())
+                    }
+                    _ => {
+                        *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
+                        Ok(())
+                    }
+                }
+            Parser_State::Version(Version_Parser_State::Parsing) =>
+                match word {
+                    "$end" => {
+                        *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
+                        let s = self.buffer.take().unwrap();
+                        self.vcd.metadata.version = Some(Version(s));
+                        Ok(())
+                    }
+                    _ => {
+                        if let Some(ref mut buffer) = self.buffer {
+                            buffer.push_str(" ");
+                            buffer.push_str(word);
+                        }
+                        else {
+                            self.buffer = Some(word.to_string());
+                        }
+                        Ok(())
+                    }
+                }
+            _   => Err(format!("{state:?} should be unreachable within {}.",function_name!())),
+
         }
     }
 }

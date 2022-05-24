@@ -9,3 +9,4 @@ edition = "2021"
 num = "0.4"
 clap = { version = "3.1.8", features = ["derive"] }
 chrono = "0.4"
+function_name = "0.3.0"
