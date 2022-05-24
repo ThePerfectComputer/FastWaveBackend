@@ -3,7 +3,6 @@ use std::io;
 use std::fs::File;
 use std::collections::BTreeMap;
 use chrono::prelude::*;
-use std::rc::Rc;
 use ::function_name::named;
 
 use num::*;
@@ -86,18 +85,16 @@ struct VCD_Parser<'a> {
 
 impl VCD {
     pub fn new() -> Self {
-        let dt = Utc
-                 .datetime_from_str("Thu Jan 1 00:00:00 1970", "%a %b %e %T %Y")
-                 .unwrap();
         let metadata = Metadata {
             date      : None,
             version   : None,
             timescale : Timescale::unit};
-        let signal = Vec::<SignalGeneric>::new();
         VCD {
             metadata    : metadata,
             all_signals : Vec::<SignalGeneric>::new(),
-            all_scopes  : Vec::<Scope>::new()}}}
+            all_scopes  : Vec::<Scope>::new()}
+        }
+    }
 
 impl<'a> VCD_Parser<'a> {
     pub fn new(vcd : &'a mut VCD) -> Self {
@@ -120,7 +117,9 @@ impl<'a> VCD_Parser<'a> {
             // TODO : Enable the following in production
             // _ => Err(format!("parser in bad state : {state:?}"))TODO : Disable the following in production
             // TODO : Disable the following in production
-            _ => Err(format!("parser in bad state : {state:?}; {t:?}"))
+            _ => {
+                Err(format!("parser in bad state : {state:?}; {t:?}"))
+            }
         }
     }
 
@@ -136,8 +135,7 @@ impl<'a> VCD_Parser<'a> {
                     }
                     _ => {
                         *state = Parser_State::Version(Version_Parser_State::Begin); 
-                        self.parse_version(word);
-                        Ok(())
+                        self.parse_version(word)
                     }
                 }
             Parser_State::Date(Date_Parser_State::Parsing) =>
@@ -178,6 +176,7 @@ impl<'a> VCD_Parser<'a> {
                     }
                     _ => {
                         *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
+                        // TODO : add fallthrough to timescale
                         Ok(())
                     }
                 }

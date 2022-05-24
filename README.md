@@ -26,12 +26,17 @@ The first build of the program may take some time.
 
 # TODO
  - [x] We need a way to merge lines.
+ - [ ] Consider what to do with don't care values
+      will probably just convert them to strings for now.
+ - [ ] Test for speed and see if stream of bytes is helpful
  - [ ] Include line and possible column numbers
- - [ ] Should insert nodes in BFS order
  - [ ] Change states to lowercase
  - [ ] We need to start regression testing the parser over all files
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.
+
+# Probably No Longer Needed
+ - [ ] Should insert nodes in BFS order
 
 # Files
  - ./test-vcd-files/aldec/SPI_Write.vcd
