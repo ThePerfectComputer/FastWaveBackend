@@ -32,7 +32,7 @@ struct Version(String);
 struct Metadata {
     date      : Option<DateTime<Utc>>,
     version   : Option<Version>,
-    timescale : Timescale}
+    timescale : (Option<u32>, Timescale)}
 
 #[derive(Debug)]
 enum SignalGeneric{
@@ -65,6 +65,8 @@ enum Date_Parser_State {Begin, Parsing}
 enum Version_Parser_State {Begin, Parsing}
 #[derive(Debug)]
 enum Timescale_Parser_State {Begin, Parsing}
+#[derive(Debug)]
+enum Signal_Tree_Parser_State {Begin, Parsing}
 
 
 #[derive(Debug)]
@@ -72,7 +74,7 @@ enum Parser_State {
     Date(Date_Parser_State),
     Version(Version_Parser_State), 
     Timescale(Timescale_Parser_State), 
-    Parse_Signal_Tree,
+    Signal_Tree(Signal_Tree_Parser_State),
     Parse_Signal_Values}
 
 struct VCD_Parser<'a> {
@@ -88,7 +90,7 @@ impl VCD {
         let metadata = Metadata {
             date      : None,
             version   : None,
-            timescale : Timescale::unit};
+            timescale : (None, Timescale::unit)};
         VCD {
             metadata    : metadata,
             all_signals : Vec::<SignalGeneric>::new(),
@@ -114,8 +116,9 @@ impl<'a> VCD_Parser<'a> {
         match state {
             Parser_State::Date(_) => self.parse_date(word),
             Parser_State::Version(_) => self.parse_version(word),
+            Parser_State::Timescale(_) => self.parse_timescale(word),
             // TODO : Enable the following in production
-            // _ => Err(format!("parser in bad state : {state:?}"))TODO : Disable the following in production
+            // _ => Err(format!("parser in bad state : {state:?}"))
             // TODO : Disable the following in production
             _ => {
                 Err(format!("parser in bad state : {state:?}; {t:?}"))
@@ -141,10 +144,10 @@ impl<'a> VCD_Parser<'a> {
             Parser_State::Date(Date_Parser_State::Parsing) =>
                 match word {
                     "$end" => {
-                        *state = Parser_State::Version(Version_Parser_State::Begin); 
                         let s  = self.buffer.take().unwrap();
                         let dt = Utc.datetime_from_str(s.as_str(), "%a %b %e %T %Y")
-                            .expect(&format!("invalid date {s}").as_str());
+                        .expect(&format!("invalid date {s}").as_str());
+                        *state = Parser_State::Version(Version_Parser_State::Begin); 
                         self.vcd.metadata.date = Some(dt);
                         Ok(())
                     }
@@ -176,16 +179,71 @@ impl<'a> VCD_Parser<'a> {
                     }
                     _ => {
                         *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
-                        // TODO : add fallthrough to timescale
                         Ok(())
                     }
                 }
             Parser_State::Version(Version_Parser_State::Parsing) =>
                 match word {
                     "$end" => {
-                        *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
                         let s = self.buffer.take().unwrap();
                         self.vcd.metadata.version = Some(Version(s));
+                        *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
+                        Ok(())
+                    }
+                    _ => {
+                        if let Some(ref mut buffer) = self.buffer {
+                            buffer.push_str(" ");
+                            buffer.push_str(word);
+                        }
+                        else {
+                            self.buffer = Some(word.to_string());
+                        }
+                        Ok(())
+                    }
+                }
+            _   => Err(format!("{state:?} should be unreachable within {}.",function_name!())),
+
+        }
+    }
+
+    #[named]
+    pub fn parse_timescale(&mut self, word : &str) -> Result<(), String> {
+        let mut state = &mut self.vcd_parser_state;
+        match state {
+            Parser_State::Timescale(Timescale_Parser_State::Begin) =>
+                match word {
+                    "$timescale" => {
+                        *state = Parser_State::Timescale(Timescale_Parser_State::Parsing); 
+                        Ok(())
+                    }
+                    _ => {
+                        *state = Parser_State::Signal_Tree(Signal_Tree_Parser_State::Begin); 
+                        Ok(())
+                    }
+                }
+            Parser_State::Timescale(Timescale_Parser_State::Parsing) =>
+                match word {
+                    "$end" => {
+                        let s = self.buffer.take().unwrap();
+                        let s = s.split_ascii_whitespace();
+                        let s = s.collect::<Vec<&str>>();
+
+                        let scalar = s[0].to_string().parse::<u32>().unwrap();
+                        let unit = s[1];
+                        let unit = match unit {
+                            "ps" => Ok(Timescale::ps),
+                            "ns" => Ok(Timescale::ns),
+                            "us" => Ok(Timescale::us),
+                            "ms" => Ok(Timescale::ms),
+                            "s"  => Ok(Timescale::s),
+                            // TODO : see if there is a way to easily print out all enum variants
+                            // _    => Err(format!("{word} is not a valid unit of time in {Timescale}"))
+                            _    => Err(format!("{unit} is not a valid unit"))
+                        }.unwrap();
+
+                        dbg!(s);
+                        self.vcd.metadata.timescale = (Some(scalar), unit);
+                        *state = Parser_State::Timescale(Timescale_Parser_State::Begin); 
                         Ok(())
                     }
                     _ => {
