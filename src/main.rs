@@ -59,17 +59,17 @@ struct VCD {
     // the root scope should always be placed at index 0
     all_scopes  : Vec<Scope>}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Date_Parser_State {Begin, Parsing}
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Version_Parser_State {Begin, Parsing}
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Timescale_Parser_State {Begin, Parsing}
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Signal_Tree_Parser_State {Begin, Parsing}
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Parser_State {
     Date(Date_Parser_State),
     Version(Version_Parser_State), 
@@ -165,6 +165,73 @@ impl<'a> VCD_Parser<'a> {
             _   => Err(format!("{state:?} should be unreachable within {}.",function_name!())),
 
         }
+    }
+
+    #[named]
+    pub fn parse_statement(
+        &'a mut self, 
+        curr_word : &str,
+        key_word  : &str,
+        begin_state   : Parser_State,
+        parsing_state : Parser_State,
+        end_state     : Parser_State,
+        next_parser   : fn(&'a mut VCD_Parser, &str) -> Result<(), String>
+    ) -> Result<(), String> {
+        let mut state = &mut self.vcd_parser_state;
+
+        if (*state == begin_state) {
+            return match curr_word {
+                key_word => {
+                    *state = Parser_State::Date(Date_Parser_State::Parsing); 
+                    Ok(())
+                }
+                _ => {
+                    *state = Parser_State::Version(Version_Parser_State::Begin); 
+                    next_parser(self, curr_word)
+                }
+            }
+        }
+        else {
+            Ok(())
+        }
+        // Ok(())
+
+        // match state {
+        //     Parser_State::Date(Date_Parser_State::Begin) =>
+        //         match curr_word {
+        //             key_word => {
+        //                 *state = Parser_State::Date(Date_Parser_State::Parsing); 
+        //                 Ok(())
+        //             }
+        //             _ => {
+        //                 *state = Parser_State::Version(Version_Parser_State::Begin); 
+        //                 self.parse_version(curr_word)
+        //             }
+        //         }
+        //     Parser_State::Date(Date_Parser_State::Parsing) =>
+        //         match curr_word {
+        //             "$end" => {
+        //                 let s  = self.buffer.take().unwrap();
+        //                 let dt = Utc.datetime_from_str(s.as_str(), "%a %b %e %T %Y")
+        //                 .expect(&format!("invalid date {s}").as_str());
+        //                 *state = Parser_State::Version(Version_Parser_State::Begin); 
+        //                 self.vcd.metadata.date = Some(dt);
+        //                 Ok(())
+        //             }
+        //             _ => {
+        //                 if let Some(ref mut buffer) = self.buffer {
+        //                     buffer.push_str(" ");
+        //                     buffer.push_str(curr_word);
+        //                 }
+        //                 else {
+        //                     self.buffer = Some(curr_word.to_string());
+        //                 }
+        //                 Ok(())
+        //             }
+        //         }
+        //     _   => Err(format!("{state:?} should be unreachable within {}.",function_name!())),
+
+        // }
     }
 
     #[named]
