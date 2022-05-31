@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies]
 num = "0.4"
 clap = { version = "3.1.8", features = ["derive"] }
+chrono = "0.4"
+nom = "7.1.1"
+genawaiter = "0.99.1"
+nom-bufreader = "0.2.0"
