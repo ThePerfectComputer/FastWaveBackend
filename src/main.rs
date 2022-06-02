@@ -8,6 +8,9 @@ use ::function_name::named;
 use num::*;
 use clap::Parser;
 
+use std::slice;
+use std::str;
+
 #[derive(Parser)]
 struct Cli {
     /// The path to the file to read
@@ -330,26 +333,30 @@ impl<'a> VCD_Parser<'a> {
     }
 }
 
-fn yield_word_and_apply(file : File, mut f : impl FnMut(&str) -> Result<(), String>) {
+struct Line(u32);
+struct Col(u32);
+struct Position(Line, Col);
+
+fn yield_word_and_apply(file : File, mut f : impl FnMut(&[u8], Position) -> Result<(), String>) {
     let mut reader = io::BufReader::new(file);
 
     let mut buffer = String::new();
-    let mut EOF = false;
-    let line_chunk_size = 25;
 
-    while {!EOF} {
-        for _ in 0..line_chunk_size {
-            let bytes_read = reader.read_line(&mut buffer).unwrap();
-            if bytes_read == 0 {
-                EOF = true;
-                break
-            }
-        }
+    let mut line = 0u32;
+    while true {
+        let bytes_read = reader.read_line(&mut buffer).unwrap();
+        if bytes_read == 0 {break}
 
-        let words = buffer.split_ascii_whitespace();
+        line += 1;
+        let mut col = 1u32;
+
+        let mut words = buffer.split_ascii_whitespace();
 
         for word in words {
-            f(word).unwrap();
+            let word = word.as_bytes();
+            let position = Position(Line(line), Col(col));
+            f(word, position).unwrap();
+            col += (word.len() as u32) + 1;
         }
         
         buffer.clear();
@@ -357,16 +364,85 @@ fn yield_word_and_apply(file : File, mut f : impl FnMut(&str) -> Result<(), Stri
 
 }
 
+struct YieldByWord {
+    reader       : io::BufReader<File>,
+    words        : Vec<String>,
+    EOF          : bool,
+    buffer       : String,
+    str_slices  : Vec<(*const u8, usize)>,
+}
+
+impl YieldByWord {
+    fn new(file : File) -> YieldByWord {
+        let mut reader = io::BufReader::new(file);
+        YieldByWord {
+            reader       : reader,
+            words        : vec![],
+            EOF          : false,
+            buffer : "".to_string(),
+            str_slices : vec![],
+        }
+    }
+
+    fn next_word(&mut self) -> Option<&str> {
+        // if there are no more words, attempt to read more content
+        // from the file
+        if self.str_slices.is_empty() {
+            self.buffer.clear();
+
+            if self.EOF {return None}
+
+            let line_chunk_size = 10;
+
+            for _ in 0..line_chunk_size {
+                let bytes_read = self.reader.read_line(&mut self.buffer).unwrap();
+                // we hit the end of the file, so we go ahead and return None
+                if bytes_read == 0 {self.EOF = true}
+            }
+
+            let words = self.buffer.split_ascii_whitespace();
+            self.str_slices = words
+                                .rev()
+                                .map(|s| (s.as_ptr(), s.len()))
+                                .collect();
+        }
+
+        // if we make it here, we return the next word
+        unsafe {
+            let (ptr, len) = self.str_slices.pop().unwrap();
+            let slice = slice::from_raw_parts(ptr, len);
+            return Some(str::from_utf8(slice).unwrap());
+        };
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
 
     let file           = File::open(&args.path)?;
+    let mut word_gen   = YieldByWord::new(file);
+    let mut word_count = 0;
+    let mut last_word = String::new();
 
-    let mut vcd = VCD::new();
-    let mut parser = VCD_Parser::new(&mut vcd);
+    // for word in 0..5 {
+    //     dbg!(word_gen.next_word());
+    // }
+    while word_gen.next_word().is_some() {
+        word_count += 1;
+    }
+    dbg!(word_count);
 
-    yield_word_and_apply(file, |word| {parser.parse_word(word)});
-    dbg!(&vcd);
+    // loop {
+    //     let next_word = word_gen.next_word();
+    //     if next_word.is_some() {
+    //         last_word = next_word.unwrap();
+    //     }
+    //     else {
+    //         break
+    //     }
+    // }
+
+    // dbg!(last_word);
 
     Ok(())
 }
