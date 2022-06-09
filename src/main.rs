@@ -14,7 +14,7 @@ fn main() -> std::io::Result<()> {
     let args = Cli::parse();
 
     let file           = File::open(&args.path)?;
-    dbg!(["hello", "goodbye", "myworld"].contains(&"myworlde"));
+    // dbg!(["hello", "goodbye", "myworld"].contains(&"myworlde"));
     // let mut word_gen   = WordReader::new(file);
     // let mut word_count = 0;
 
@@ -26,8 +26,8 @@ fn main() -> std::io::Result<()> {
     // let word1 = "hello world";
     // let word2 = "hello planet";
     // dbg!(&word1[0..6].len());
-    dbg!(take_until("tea time  now: and later", b':'));
-    // parse_vcd(file);
+    // dbg!(take_until("tea time  now: and later", b':'));
+    parse_vcd(file);
 
     // tag("my oh my");
 

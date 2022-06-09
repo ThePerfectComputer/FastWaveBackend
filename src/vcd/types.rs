@@ -3,16 +3,16 @@ use chrono::prelude::*;
 use num::BigInt;
 
 #[derive(Debug)]
-struct Version(String);
+pub(super) struct Version(String);
 
 #[derive(Debug)]
-enum Timescale {ps, ns, us, ms, s, unit}
+pub(super) enum Timescale {ps, ns, us, ms, s, unit}
 
 #[derive(Debug)]
 pub(super) struct Metadata {
-    date      : Option<DateTime<Utc>>,
-    version   : Option<Version>,
-    timescale : (Option<u32>, Timescale)}
+    pub(super) date      : Option<DateTime<Utc>>,
+    pub(super) version   : Option<Version>,
+    pub(super) timescale : (Option<u32>, Timescale)}
 
 #[derive(Debug)]
 struct Scope_Idx(usize);
