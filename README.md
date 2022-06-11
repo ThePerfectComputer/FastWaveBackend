@@ -29,6 +29,7 @@ The first build of the program may take some time.
  - [ ] Consider what to do with don't care values
       will probably just convert them to strings for now.
  - [ ] Test for speed and see if stream of bytes is helpful
+ - [ ] Split ``parse.rs``. It's getting too large.
  - [ ] Include line and possible column numbers
  - [ ] Change states to lowercase
  - [ ] We need to start regression testing the parser over all files

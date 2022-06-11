@@ -40,11 +40,11 @@ fn tag<'a>(word : &'a str, pattern : &'a str) -> Option<&'a str> {
 
 #[named]
 fn parse_date(
-    word_and_ctx1 : (&str, Cursor),
-    word_and_ctx2 : (&str, Cursor),
-    word_and_ctx3 : (&str, Cursor),
-    word_and_ctx4 : (&str, Cursor),
-    word_and_ctx5 : (&str, Cursor),
+    word_and_ctx1 : (&str, &Cursor),
+    word_and_ctx2 : (&str, &Cursor),
+    word_and_ctx3 : (&str, &Cursor),
+    word_and_ctx4 : (&str, &Cursor),
+    word_and_ctx5 : (&str, &Cursor),
 ) -> Result<DateTime<Utc>, String> {
 
     let day = {
@@ -86,7 +86,11 @@ fn parse_date(
         // check for another word in the file
         let (word, cursor) = word_and_ctx3;
 
-        let date : u8 = word.to_string().parse().unwrap();
+        // let date : u8 = word.to_string().parse().unwrap();
+        let date : u8 = match word.to_string().parse() {
+            Ok(date) => date,
+            Err(_) => {return Err("".to_string())}
+        };
 
         if date > 31 {
             let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
@@ -96,15 +100,17 @@ fn parse_date(
 
         }
 
-        word.to_string()
+        date.to_string()
     };
 
     let (hh, mm, ss) = {
         // get hour
         let (word, cursor) = word_and_ctx4;
 
-        let (hh, Residual(remainder)) = take_until(word, b':').unwrap();
-        let hh : u8 = hh.to_string().parse().unwrap();
+        let (hh, Residual(remainder)) = take_until(word, b':').ok_or("did not find colon")?;
+        let hh : u8 = hh.to_string()
+                        .parse()
+                        .map_err(|_| "failed to parse".to_string())?;
 
         if hh > 23 {
             let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
@@ -114,8 +120,10 @@ fn parse_date(
         }
 
         // get minute
-        let (mm, Residual(remainder)) = take_until(remainder, b':').unwrap();
-        let mm : u8 = mm.to_string().parse().unwrap();
+        let (mm, Residual(remainder)) = take_until(remainder, b':').ok_or("did not find colon")?;
+        let mm : u8 = mm.to_string()
+                        .parse()
+                        .map_err(|_| "failed to parse".to_string())?;
 
         if mm > 60 {
             let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
@@ -125,7 +133,10 @@ fn parse_date(
         }
 
         // get second
-        let ss : u8 = remainder.to_string().parse().unwrap();
+        // let ss : u8 = remainder.to_string().parse().unwrap();
+        let ss : u8 = remainder.to_string()
+                        .parse()
+                        .map_err(|_| "failed to parse".to_string())?;
 
         if ss > 60 {
             let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
@@ -142,16 +153,51 @@ fn parse_date(
         word.to_string()
     };
 
-    let date = Utc.datetime_from_str(
-        format!("{day} {month} {date} {mm}:{hh}:{ss} {year}").as_str(),
-        "%a %b %e %T %Y").unwrap();
+    // unfortunately, the minutes, seconds, and hour could occur in an 
+    // unexpected order
+    let full_date = format!("{day} {month} {date} {mm}:{hh}:{ss} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
 
-    Ok(date)
+    let full_date = format!("{day} {month} {date} {mm}:{ss}:{hh} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    let full_date = format!("{day} {month} {date} {ss}:{mm}:{hh} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    let full_date = format!("{day} {month} {date} {ss}:{hh}:{mm} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    let full_date = format!("{day} {month} {date} {hh}:{ss}:{mm} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    let full_date = format!("{day} {month} {date} {hh}:{mm}:{ss} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    Err("failed to parse dat".to_string())
+
 }
 
 #[named]
-fn parse_header(word_reader : &mut WordReader) -> Result<Metadata, String> {
-    let mut header = Metadata {
+fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
+    let mut metadata = Metadata {
         date : None,
         version : None,
         timescale : (None, Timescale::unit)
@@ -168,7 +214,6 @@ fn parse_header(word_reader : &mut WordReader) -> Result<Metadata, String> {
 
         // destructure
         let (word, cursor) = word.unwrap();
-        let ident = tag(word, "$");
 
         match tag(word, "$") {
             // we hope that this word stars with a `$`
@@ -181,6 +226,11 @@ fn parse_header(word_reader : &mut WordReader) -> Result<Metadata, String> {
                         // {Day, Month, Date(number in month), hh:mm:ss, year}.
                         // Thus, we must lookahead read the 5 next words, and try our date
                         // parser on 5! = 120 permutations of the 5 words.
+                        //
+                        // It is also possible that within each permutation, the hours,
+                        // minutes, and seconds could be in an unusual order, which means
+                        // that we may search up to 6 different permutations oh hh::mm:ss,
+                        // for an upper bound total of 720 permutations
                         //
                         // While looking ahead, if one of the 5 words in `$end`, we have to 
                         // immediately stop trying to get more words.
@@ -206,15 +256,43 @@ fn parse_header(word_reader : &mut WordReader) -> Result<Metadata, String> {
                         // words
                         if found_end {continue}
 
-                        let iter =  lookahead_5_words
-                                    .iter()
-                                    .permutations(lookahead_5_words.len());
-                        // let parsed_date = parse_date(word_reader).unwrap();
-                        // header.date     = Some(parsed_date);
+                        let permutations =  lookahead_5_words
+                                            .iter()
+                                            .permutations(lookahead_5_words.len());
+                        
+                        // go ahead and search for a match amongst permuted date text
+                        for mut permutations in permutations {
+                            let (w1, s1) = permutations.pop().unwrap();
+                            let arg_1 = (&w1[..], s1);
+
+                            let (w2, s2) = permutations.pop().unwrap();
+                            let arg_2 = (&w2[..], s2);
+
+                            let (w3, s3) = permutations.pop().unwrap();
+                            let arg_3 = (&w3[..], s3);
+
+                            let (w4, s4) = permutations.pop().unwrap();
+                            let arg_4 = (&w4[..], s4);
+
+                            let (w5, s5) = permutations.pop().unwrap();
+                            let arg_5 = (&w5[..], s5);
+
+                            let parsed_date = parse_date(arg_1, arg_2, arg_3, arg_4, arg_5);
+
+                            // store date and exit loop if a match is found
+                            if parsed_date.is_ok() {
+                                metadata.date = Some(parsed_date.unwrap());
+                                break
+                            }
+
+                        }
                     }
-                    "version"   => {println!("got version")}
-                    "timescale" => {println!("got timescale")}
+                    "version"   => {println!("found version")}
+                    "timescale" => {println!("found timescale")}
+                    // in VCDs, the scope keyword indicates the end of the metadata section
                     "scope"     => {break}
+                    // we keep searching for words until we've found one of the following
+                    // keywords, ["version", "timescale", "scope"]
                     _ => {}
                 }
             }
@@ -223,12 +301,12 @@ fn parse_header(word_reader : &mut WordReader) -> Result<Metadata, String> {
         }
 
     }
-    return Ok(header)
+    return Ok(metadata)
 }
 
 pub fn parse_vcd(file : File) {
     let mut word_gen = WordReader::new(file);
 
-    let header = parse_header(&mut word_gen).unwrap();
+    let header = parse_metadata(&mut word_gen).unwrap();
     dbg!(header);
 }
