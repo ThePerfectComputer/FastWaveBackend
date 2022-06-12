@@ -155,6 +155,18 @@ fn parse_date(
 
     // unfortunately, the minutes, seconds, and hour could occur in an 
     // unexpected order
+    let full_date = format!("{day} {month} {date} {hh}:{mm}:{ss} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
+    let full_date = format!("{day} {month} {date} {hh}:{ss}:{mm} {year}");
+    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    if full_date.is_ok() {
+        return Ok(full_date.unwrap())
+    }
+
     let full_date = format!("{day} {month} {date} {mm}:{hh}:{ss} {year}");
     let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
     if full_date.is_ok() {
@@ -179,20 +191,35 @@ fn parse_date(
         return Ok(full_date.unwrap())
     }
 
-    let full_date = format!("{day} {month} {date} {hh}:{ss}:{mm} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
+    Err("failed to parse date".to_string())
+
+}
+
+#[named]
+fn parse_version(word_reader : &mut WordReader) -> Result<Version, String> {
+    let mut version = String::new();
+
+    loop {
+        let word = word_reader.next_word();
+
+        // if there isn't another word left in the file, then we exit
+        if word.is_none() {
+            return Err(format!("reached end of file without parser leaving {}", function_name!()))
+        }
+
+        let (word, cursor) = word.unwrap();
+
+        if word == "$end" {
+            // truncate trailing whitespace
+            let version = version[0..(version.len() -  1)].to_string();
+            return Ok(Version(version))
+
+        }
+        else {
+            version.push_str(word);
+            version.push_str(" ");
+        }
     }
-
-    let full_date = format!("{day} {month} {date} {hh}:{mm}:{ss} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    Err("failed to parse dat".to_string())
-
 }
 
 #[named]
@@ -287,7 +314,12 @@ fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
 
                         }
                     }
-                    "version"   => {println!("found version")}
+                    "version"   => {
+                        let version = parse_version(word_reader);
+                        if version.is_ok() {
+                            metadata.version = Some(version.unwrap());
+                        }
+                    }
                     "timescale" => {println!("found timescale")}
                     // in VCDs, the scope keyword indicates the end of the metadata section
                     "scope"     => {break}

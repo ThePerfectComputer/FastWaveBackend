@@ -3,7 +3,7 @@ use chrono::prelude::*;
 use num::BigInt;
 
 #[derive(Debug)]
-pub(super) struct Version(String);
+pub(super) struct Version(pub String);
 
 #[derive(Debug)]
 pub(super) enum Timescale {ps, ns, us, ms, s, unit}
