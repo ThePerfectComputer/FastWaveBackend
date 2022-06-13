@@ -26,6 +26,7 @@ The first build of the program may take some time.
 
 # TODO
  - [x] We need a way to merge lines.
+ - [ ] Consolidate error messages and add cursors.
  - [ ] Consider what to do with don't care values
       will probably just convert them to strings for now.
  - [ ] Test for speed and see if stream of bytes is helpful

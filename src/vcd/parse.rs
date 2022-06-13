@@ -7,6 +7,15 @@ use ::function_name::named;
 #[derive(Debug)]
 pub struct Residual<'a>(&'a str);
 
+pub fn digit(chr : u8) -> bool {
+    let zero = b'0' as u8;
+    let nine = b'9' as u8;
+
+    let between_zero_and_nine = (chr >= zero) && (nine >= chr);
+
+    return between_zero_and_nine
+}
+
 pub fn take_until<'a>(word : &'a str, pattern : u8) -> Option<(&'a str, Residual)> {
     let mut new_start  = 0;
 
@@ -20,6 +29,24 @@ pub fn take_until<'a>(word : &'a str, pattern : u8) -> Option<(&'a str, Residual
     }
 
     None
+}
+
+pub fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> (&'a str, Residual) {
+    let mut new_start  = 0;
+    dbg!(word);
+
+    for chr in word.as_bytes() {
+        dbg!(&chr);
+        if (cond(*chr)) {
+            new_start += 1;
+        } 
+        else {
+            break
+        }
+    }
+
+    return (&word[0..new_start], Residual(&word[new_start..]));
+
 }
 
 fn tag<'a>(word : &'a str, pattern : &'a str) -> Option<&'a str> {
@@ -86,7 +113,6 @@ fn parse_date(
         // check for another word in the file
         let (word, cursor) = word_and_ctx3;
 
-        // let date : u8 = word.to_string().parse().unwrap();
         let date : u8 = match word.to_string().parse() {
             Ok(date) => date,
             Err(_) => {return Err("".to_string())}
@@ -223,6 +249,59 @@ fn parse_version(word_reader : &mut WordReader) -> Result<Version, String> {
 }
 
 #[named]
+fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timescale), String> {
+    let err_msg = format!("failed in {}", function_name!());
+
+    // we might see `scalarunit $end` or `scalar unit $end`
+
+    // first get timescale
+    let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+    let word = word.to_string();
+    dbg!(&word);
+    let (scalar, Residual(residual)) = take_while(word.as_str(), digit);
+
+    let scalar : u32 = scalar.to_string().parse()
+                        .map_err(|_| &err_msg)?;
+
+    let timescale = {
+        if residual == "" {
+            dbg!("parse_timescale");
+            let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+            let unit = match word {
+                "ps" => {Ok(Timescale::ps)}
+                "ns" => {Ok(Timescale::ns)}
+                "us" => {Ok(Timescale::us)}
+                "ms" => {Ok(Timescale::ms)}
+                "s"  => {Ok(Timescale::s)}
+                _    => {Err(err_msg.to_string())}
+            }.unwrap();
+        
+            (Some(scalar), unit)
+        }
+        else {
+            let unit = match residual {
+                "ps" => {Ok(Timescale::ps)}
+                "ns" => {Ok(Timescale::ns)}
+                "us" => {Ok(Timescale::us)}
+                "ms" => {Ok(Timescale::ms)}
+                "s"  => {Ok(Timescale::s)}
+                _    => {Err(err_msg.to_string())}
+            }.unwrap();
+        
+            (Some(scalar), unit)
+        }
+    };
+
+    // then check for the `$end` keyword
+    let (end, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+    tag(end, "$end").ok_or(&err_msg)?;
+
+    return Ok(timescale);
+
+    Err("".to_string())
+}
+
+#[named]
 fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
     let mut metadata = Metadata {
         date : None,
@@ -320,7 +399,13 @@ fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
                             metadata.version = Some(version.unwrap());
                         }
                     }
-                    "timescale" => {println!("found timescale")}
+                    "timescale" => {
+                        dbg!("here");
+                        let timescale = parse_timescale(word_reader);
+                        if timescale.is_ok() {
+                            metadata.timescale = timescale.unwrap();
+                        }
+                    }
                     // in VCDs, the scope keyword indicates the end of the metadata section
                     "scope"     => {break}
                     // we keep searching for words until we've found one of the following
