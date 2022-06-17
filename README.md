@@ -26,14 +26,16 @@ The first build of the program may take some time.
 
 # TODO
  - [x] We need a way to merge lines.
+ - [ ] We need to start regression testing the parser over all files
+ - [ ] Decide if I want to return option types
+ - [ ] Propagate all to question mark unwrap types.
+ - [ ] Don't want variation in hh:mm:ss
  - [ ] Consolidate error messages and add cursors.
  - [ ] Consider what to do with don't care values
       will probably just convert them to strings for now.
- - [ ] Test for speed and see if stream of bytes is helpful
  - [ ] Split ``parse.rs``. It's getting too large.
  - [ ] Include line and possible column numbers
  - [ ] Change states to lowercase
- - [ ] We need to start regression testing the parser over all files
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.
 

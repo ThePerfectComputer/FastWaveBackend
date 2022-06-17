@@ -6,6 +6,8 @@ use ::function_name::named;
 
 #[derive(Debug)]
 pub struct Residual<'a>(&'a str);
+#[derive(Debug)]
+pub struct ParseResult<'a> {matched : &'a str, residual : &'a str}
 
 pub fn digit(chr : u8) -> bool {
     let zero = b'0' as u8;
@@ -16,27 +18,30 @@ pub fn digit(chr : u8) -> bool {
     return between_zero_and_nine
 }
 
-pub fn take_until<'a>(word : &'a str, pattern : u8) -> Option<(&'a str, Residual)> {
+pub fn take_until<'a>(word : &'a str, pattern : u8) -> ParseResult<'a> {
     let mut new_start  = 0;
 
     for chr in word.as_bytes() {
         if (*chr == pattern) {
-            return Some((&word[0..new_start], Residual(&word[new_start+1..])));
+            break
         } 
         else {
             new_start += 1;
         }
     }
 
-    None
+    return 
+        ParseResult{
+            matched  : &word[0..new_start],
+            residual : &word[new_start..]
+        };
+
 }
 
-pub fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> (&'a str, Residual) {
+pub fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> ParseResult<'a> {
     let mut new_start  = 0;
-    dbg!(word);
 
     for chr in word.as_bytes() {
-        dbg!(&chr);
         if (cond(*chr)) {
             new_start += 1;
         } 
@@ -45,11 +50,15 @@ pub fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> (&'a str, Residu
         }
     }
 
-    return (&word[0..new_start], Residual(&word[new_start..]));
+    return 
+        ParseResult{
+            matched  : &word[0..new_start],
+            residual : &word[new_start..]
+        };
 
 }
 
-fn tag<'a>(word : &'a str, pattern : &'a str) -> Option<&'a str> {
+fn tag<'a>(word : &'a str, pattern : &'a str) -> ParseResult<'a> {
     let lhs           = word.as_bytes().iter();
     let rhs           = pattern.as_bytes();
     let iter          = lhs.zip(rhs);
@@ -58,11 +67,44 @@ fn tag<'a>(word : &'a str, pattern : &'a str) -> Option<&'a str> {
     let mut res = true;
     for (c_lhs, c_rhs) in iter {
         res = res && (c_lhs == c_rhs);
-        if !res {return None}
+        if !res {break}
         new_start += 1;
     }
 
-    Some(&word[new_start..])
+    return 
+        ParseResult{
+            matched  : &word[0..new_start],
+            residual : &word[new_start..]
+        };
+}
+
+impl<'a> ParseResult<'a> {
+    fn match_not_empty(& self) -> Result<(), String> {
+        if self.matched == "" {
+            return Err("failed".to_string())
+        }
+        else {
+            return Ok(())
+        }
+    }
+
+    fn assert_match(& self) -> Result<&str, String> {
+        if self.matched == "" {
+            return Err("no match".to_string())
+        }
+        else {
+            return Ok(self.matched)
+        }
+    }
+
+    fn assert_residual(& self) -> Result<&str, String> {
+        if self.residual == "" {
+            return Err("no residual".to_string())
+        }
+        else {
+            return Ok(self.residual)
+        }
+    }
 }
 
 #[named]
@@ -133,8 +175,9 @@ fn parse_date(
         // get hour
         let (word, cursor) = word_and_ctx4;
 
-        let (hh, Residual(remainder)) = take_until(word, b':').ok_or("did not find colon")?;
-        let hh : u8 = hh.to_string()
+        let res = take_until(word, b':');
+        res.assert_match()?;
+        let hh : u8 = res.matched.to_string()
                         .parse()
                         .map_err(|_| "failed to parse".to_string())?;
 
@@ -146,8 +189,10 @@ fn parse_date(
         }
 
         // get minute
-        let (mm, Residual(remainder)) = take_until(remainder, b':').ok_or("did not find colon")?;
-        let mm : u8 = mm.to_string()
+        let word = &res.residual[1..]; // chop off colon which is at index 0
+        let res = take_until(word, b':');
+        res.assert_match()?;
+        let mm : u8 = res.matched.to_string()
                         .parse()
                         .map_err(|_| "failed to parse".to_string())?;
 
@@ -160,7 +205,9 @@ fn parse_date(
 
         // get second
         // let ss : u8 = remainder.to_string().parse().unwrap();
-        let ss : u8 = remainder.to_string()
+        res.assert_residual()?;
+        let residual = &res.residual[1..]; // chop of colon which is at index 0
+        let ss : u8 = residual.to_string()
                         .parse()
                         .map_err(|_| "failed to parse".to_string())?;
 
@@ -182,36 +229,6 @@ fn parse_date(
     // unfortunately, the minutes, seconds, and hour could occur in an 
     // unexpected order
     let full_date = format!("{day} {month} {date} {hh}:{mm}:{ss} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    let full_date = format!("{day} {month} {date} {hh}:{ss}:{mm} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    let full_date = format!("{day} {month} {date} {mm}:{hh}:{ss} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    let full_date = format!("{day} {month} {date} {mm}:{ss}:{hh} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    let full_date = format!("{day} {month} {date} {ss}:{mm}:{hh} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
-    if full_date.is_ok() {
-        return Ok(full_date.unwrap())
-    }
-
-    let full_date = format!("{day} {month} {date} {ss}:{hh}:{mm} {year}");
     let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
     if full_date.is_ok() {
         return Ok(full_date.unwrap())
@@ -257,15 +274,14 @@ fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timesc
     // first get timescale
     let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
     let word = word.to_string();
-    dbg!(&word);
-    let (scalar, Residual(residual)) = take_while(word.as_str(), digit);
+    let ParseResult{matched, residual} = take_while(word.as_str(), digit);
+    let scalar = matched;
 
     let scalar : u32 = scalar.to_string().parse()
                         .map_err(|_| &err_msg)?;
 
     let timescale = {
         if residual == "" {
-            dbg!("parse_timescale");
             let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
             let unit = match word {
                 "ps" => {Ok(Timescale::ps)}
@@ -294,7 +310,7 @@ fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timesc
 
     // then check for the `$end` keyword
     let (end, cursor) = word_reader.next_word().ok_or(&err_msg)?;
-    tag(end, "$end").ok_or(&err_msg)?;
+    tag(end, "$end").match_not_empty()?;
 
     return Ok(timescale);
 
@@ -303,6 +319,8 @@ fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timesc
 
 #[named]
 fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
+    let err_msg = format!("reached end of file without parser leaving {}", function_name!());
+
     let mut metadata = Metadata {
         date : None,
         version : None,
@@ -311,20 +329,13 @@ fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
 
     loop {
         // check for another word in the file
-        let word = word_reader.next_word();
+        let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
 
-        // if there isn't another word left in the file, then we exit
-        if word.is_none() {
-            return Err(format!("reached end of file without parser leaving {}", function_name!()))
-        }
-
-        // destructure
-        let (word, cursor) = word.unwrap();
-
-        match tag(word, "$") {
+        let ParseResult{matched, residual} = tag(word, "$");
+        match matched {
             // we hope that this word stars with a `$`
-            Some(ident) =>  {
-                match ident {
+            "$" =>  {
+                match residual {
                     "date"      => {
                         let err_msg = format!("reached end of file without parser leaving {}", function_name!());
                         // a date is typically composed of the 5 following words which can 
@@ -400,7 +411,6 @@ fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
                         }
                     }
                     "timescale" => {
-                        dbg!("here");
                         let timescale = parse_timescale(word_reader);
                         if timescale.is_ok() {
                             metadata.timescale = timescale.unwrap();
@@ -413,8 +423,8 @@ fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
                     _ => {}
                 }
             }
-            // if not, then we keep looping
-            None => {}
+            // if word does not start with `$`, then we keep looping
+            _ => {}
         }
 
     }
