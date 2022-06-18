@@ -6,7 +6,7 @@ use num::BigInt;
 pub(super) struct Version(pub String);
 
 #[derive(Debug)]
-pub(super) enum Timescale {ps, ns, us, ms, s, unit}
+pub(super) enum Timescale {fs, ps, ns, us, ms, s, unit}
 
 #[derive(Debug)]
 pub(super) struct Metadata {
