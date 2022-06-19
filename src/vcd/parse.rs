@@ -1,111 +1,16 @@
-use super::*;
 use chrono::prelude::*;
 use itertools::Itertools;
 use std::fs::File;
 use ::function_name::named;
 
-#[derive(Debug)]
-pub struct Residual<'a>(&'a str);
-#[derive(Debug)]
-pub struct ParseResult<'a> {matched : &'a str, residual : &'a str}
+use super::*;
 
-pub fn digit(chr : u8) -> bool {
-    let zero = b'0' as u8;
-    let nine = b'9' as u8;
+mod combinator_atoms;
+use combinator_atoms::*;
 
-    let between_zero_and_nine = (chr >= zero) && (nine >= chr);
+mod types;
+use types::*;
 
-    return between_zero_and_nine
-}
-
-pub fn take_until<'a>(word : &'a str, pattern : u8) -> ParseResult<'a> {
-    let mut new_start  = 0;
-
-    for chr in word.as_bytes() {
-        if (*chr == pattern) {
-            break
-        } 
-        else {
-            new_start += 1;
-        }
-    }
-
-    return 
-        ParseResult{
-            matched  : &word[0..new_start],
-            residual : &word[new_start..]
-        };
-
-}
-
-pub fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> ParseResult<'a> {
-    let mut new_start  = 0;
-
-    for chr in word.as_bytes() {
-        if (cond(*chr)) {
-            new_start += 1;
-        } 
-        else {
-            break
-        }
-    }
-
-    return 
-        ParseResult{
-            matched  : &word[0..new_start],
-            residual : &word[new_start..]
-        };
-
-}
-
-fn tag<'a>(word : &'a str, pattern : &'a str) -> ParseResult<'a> {
-    let lhs           = word.as_bytes().iter();
-    let rhs           = pattern.as_bytes();
-    let iter          = lhs.zip(rhs);
-    let mut new_start = 0;
-
-    let mut res = true;
-    for (c_lhs, c_rhs) in iter {
-        res = res && (c_lhs == c_rhs);
-        if !res {break}
-        new_start += 1;
-    }
-
-    return 
-        ParseResult{
-            matched  : &word[0..new_start],
-            residual : &word[new_start..]
-        };
-}
-
-impl<'a> ParseResult<'a> {
-    fn match_not_empty(& self) -> Result<(), String> {
-        if self.matched == "" {
-            return Err("failed".to_string())
-        }
-        else {
-            return Ok(())
-        }
-    }
-
-    fn assert_match(& self) -> Result<&str, String> {
-        if self.matched == "" {
-            return Err("no match".to_string())
-        }
-        else {
-            return Ok(self.matched)
-        }
-    }
-
-    fn assert_residual(& self) -> Result<&str, String> {
-        if self.residual == "" {
-            return Err("no residual".to_string())
-        }
-        else {
-            return Ok(self.residual)
-        }
-    }
-}
 
 #[named]
 fn parse_date(
@@ -311,7 +216,7 @@ fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timesc
 
     // then check for the `$end` keyword
     let (end, cursor) = word_reader.next_word().ok_or(&err_msg)?;
-    tag(end, "$end").match_not_empty()?;
+    tag(end, "$end").assert_match()?;
 
     return Ok(timescale);
 

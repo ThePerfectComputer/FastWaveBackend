@@ -26,14 +26,20 @@ The first build of the program may take some time.
 
 # TODO
  - [x] We need a way to merge lines.
- - [ ] We need to start regression testing the parser over all files
- - [ ] Decide if I want to return option types
- - [ ] Propagate all to question mark unwrap types.
- - [ ] Don't want variation in hh:mm:ss
+ - [x] We need to start regression testing the parser over all files
+ - [x] Decide if I want to return option types
+ - [x] Propagate all to question mark unwrap types.
+ - [x] Don't want variation in hh:mm:ss
+ - [x] parser_atoms -> combinator_atoms
+ - [x] make parse/types.rs
+ - [x] remove/replace calls to match_not_empty
+ - [ ] Split ``parse.rs``. It's getting too large.
+ - [ ] support parsing dates with commas
+ - [ ] move list of files to separate test file/folder
+
  - [ ] Consolidate error messages and add cursors.
  - [ ] Consider what to do with don't care values
       will probably just convert them to strings for now.
- - [ ] Split ``parse.rs``. It's getting too large.
  - [ ] Include line and possible column numbers
  - [ ] Change states to lowercase
  - [ ] Take a look at GTKWave parser to compare effificiency.
