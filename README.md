@@ -24,6 +24,8 @@ The first build of the program may take some time.
 
 ``cargo run --release test-vcd-files/aldec/SPI_Write.vcd``
 
+You can run all the tests with ``cargo test``
+
 # TODO
  - [x] We need a way to merge lines.
  - [x] We need to start regression testing the parser over all files
@@ -33,9 +35,11 @@ The first build of the program may take some time.
  - [x] parser_atoms -> combinator_atoms
  - [x] make parse/types.rs
  - [x] remove/replace calls to match_not_empty
- - [ ] Split ``parse.rs``. It's getting too large.
+ - [x] Split ``parse.rs``. It's getting too large.
  - [ ] support parsing dates with commas
  - [ ] move list of files to separate test file/folder
+ - [ ] Fix warning especially usage and restriction warnings once I'm
+       able to successfully parse all sample VCDs.
 
  - [ ] Consolidate error messages and add cursors.
  - [ ] Consider what to do with don't care values
