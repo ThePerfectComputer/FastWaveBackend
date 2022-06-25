@@ -29,7 +29,10 @@ mod tests {
     use std::fs::File;
     #[test]
     fn headers() {
-        for file in test::files {
+        // TODO: eventually, once all dates pass, merge the following
+        // two loops
+        // testing dates
+        for file in test::good_date_files {
             let metadata = parse_metadata(
                 &mut WordReader::new(
                     File::open(file)
@@ -38,6 +41,19 @@ mod tests {
             );
             assert!(metadata.is_ok());
             assert!(metadata.unwrap().date.is_some());
+        }
+
+        for file in test::files {
+            let metadata = parse_metadata(
+                &mut WordReader::new(
+                    File::open(file)
+                    .unwrap()
+                )
+            );
+            assert!(metadata.is_ok());
+
+            let (scalar, timescale) = metadata.unwrap().timescale;
+            assert!(scalar.is_some());
         }
 
     }

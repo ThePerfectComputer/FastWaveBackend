@@ -29,6 +29,20 @@ pub(super) fn take_until<'a>(word : &'a str, pattern : u8) -> ParseResult<'a> {
 
 }
 
+// TODO: if I end up using simulator specific date parsers, ``take_until`` may
+// suffice rendering this function obselete, at which point I should delete it.
+pub(super) fn truncate_last_chr_when<'a>(word : &'a str, cond : fn(u8) -> bool) -> &'a str {
+    let last_chr = word.as_bytes().last().unwrap();
+    let mut new_end_index = word.len();
+
+    if cond(*last_chr) {
+        new_end_index -= 1;
+    }
+    
+    return &word[0..new_end_index]
+
+}
+
 pub(super) fn take_while<'a>(word : &'a str, cond : fn(u8) -> bool) -> ParseResult<'a> {
     let mut new_start  = 0;
 
