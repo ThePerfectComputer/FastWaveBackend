@@ -12,6 +12,14 @@ struct Word(usize);
 #[derive(Debug)]
 pub struct Cursor(Line, Word);
 
+impl Cursor {
+    pub(super) fn error(&self, word : &str) -> Result<(), String> {
+        let Cursor(Line(line_no), Word(word_no)) = self;
+        Err(format!("Error on word '{word}' {word_no} words into line {line_no}!"))
+    }
+
+}
+
 pub struct WordReader {
     reader       : io::BufReader<File>,
     EOF          : bool,
@@ -21,7 +29,7 @@ pub struct WordReader {
 }
 
 impl WordReader {
-    pub fn new(file : File) -> WordReader {
+    pub(super) fn new(file : File) -> WordReader {
         let mut reader = io::BufReader::new(file);
         WordReader {
             reader       : reader,
@@ -32,7 +40,7 @@ impl WordReader {
         }
     }
 
-    pub fn next_word(&mut self) -> Option<(&str, Cursor)> {
+    pub(super) fn next_word(&mut self) -> Option<(&str, Cursor)> {
         // if there are no more words, attempt to read more content
         // from the file
         if self.str_slices.is_empty() {

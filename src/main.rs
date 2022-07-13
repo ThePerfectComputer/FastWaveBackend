@@ -5,7 +5,7 @@ pub mod test;
 use test::*;
 
 pub mod vcd;
-use vcd::*;
+use vcd::parse_vcd;
 
 #[derive(Parser)]
 struct Cli {
@@ -15,6 +15,7 @@ struct Cli {
 
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
+
 
     let file = File::open(&args.path)?;
     parse_vcd(file);

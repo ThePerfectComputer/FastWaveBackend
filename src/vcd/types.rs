@@ -15,13 +15,13 @@ pub(super) struct Metadata {
     pub(super) timescale : (Option<u32>, Timescale)}
 
 #[derive(Debug)]
-struct Scope_Idx(usize);
+pub(super) struct Scope_Idx(usize);
 
 #[derive(Debug)]
-struct Signal_Idx(usize);
+pub(super) struct Signal_Idx(usize);
 
 #[derive(Debug)]
-enum SignalGeneric{
+pub(super) enum SignalGeneric{
     Signal{
         name           : String,
         timeline       : BTreeMap<BigInt, BigInt>,
@@ -32,18 +32,18 @@ enum SignalGeneric{
 }
 
 #[derive(Debug)]
-struct Scope {
+pub(super) struct Scope {
     name          : String,
     child_signals : Vec<Signal_Idx>,
     child_scopes  : Vec<Scope_Idx>}
 
 
 #[derive(Debug)]
-struct VCD {
-    metadata    : Metadata,
-    all_signals : Vec<SignalGeneric>,
+pub struct VCD {
+    pub(super) metadata    : Metadata,
+    pub(super) all_signals : Vec<SignalGeneric>,
     // the root scope should always be placed at index 0
-    all_scopes  : Vec<Scope>}
+    pub(super) all_scopes  : Vec<Scope>}
 
 impl VCD {
     pub fn new() -> Self {

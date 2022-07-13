@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use itertools::Itertools;
 use std::fs::File;
-use ::function_name::named;
+use function_name::named;
 
 use super::*;
 
