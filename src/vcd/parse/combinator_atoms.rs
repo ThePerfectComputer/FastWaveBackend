@@ -1,4 +1,5 @@
 use super::types::ParseResult;
+use super::reader::WordReader;
 
 pub(super) fn digit(chr : u8) -> bool {
     let zero = b'0' as u8;
@@ -81,4 +82,23 @@ pub(super) fn tag<'a>(word : &'a str, pattern : &'a str) -> ParseResult<'a> {
             matched  : &word[0..new_start],
             residual : &word[new_start..]
         };
+}
+
+pub(super) fn ident(
+    word_reader : &mut WordReader,
+    keyword : &str, 
+) -> Result<(), String> {
+    // let keyword = "module";
+
+    let err : Result<(), String> = Err(format!("reached end of file without parser leaving ident"));
+    let word = word_reader.next_word();
+    let (word, cursor) = word.ok_or(err).unwrap();
+
+    if word == keyword {
+        return Ok(())
+    }
+    else {
+        let err = format!("found keyword `{word}` but expected `{keyword}` on {cursor:?}");
+        return Err(err)
+    }
 }

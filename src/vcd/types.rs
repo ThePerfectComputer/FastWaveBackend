@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use chrono::prelude::*;
 use num::BigInt;
 
@@ -14,46 +14,49 @@ pub(super) struct Metadata {
     pub(super) version   : Option<Version>,
     pub(super) timescale : (Option<u32>, Timescale)}
 
-#[derive(Debug)]
-pub(super) struct Scope_Idx(usize);
+#[derive(Debug, Copy, Clone)]
+pub(super) struct Scope_Idx(pub(super) usize);
+
+#[derive(Debug, Copy, Clone)]
+pub(super) struct Signal_Idx(pub(super) usize);
 
 #[derive(Debug)]
-pub(super) struct Signal_Idx(usize);
+pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire,}
 
 #[derive(Debug)]
-pub(super) enum SignalGeneric{
-    Signal{
-        name           : String,
-        timeline       : BTreeMap<BigInt, BigInt>,
-        scope_parent   : Scope_Idx},
-    SignalAlias{
-        name          : String,
-        signal_alias  : Signal_Idx}
+pub(super) enum Sig_Value {
+    Numeric(BigInt),
+    NonNumeric(String)}
+
+#[derive(Debug)]
+pub(super) enum Signal{
+    Data{
+         name         : String,
+         sig_type     : Sig_Type,
+         num_bits     : Option<usize>,
+         // TODO : may be able to remove self_idx
+         self_idx     : Signal_Idx,
+         timeline     : BTreeMap<BigInt, Sig_Value>,
+         scope_parent : Scope_Idx},
+    Alias{
+         name         : String,
+         signal_alias : Signal_Idx}
 }
 
 #[derive(Debug)]
 pub(super) struct Scope {
-    name          : String,
-    child_signals : Vec<Signal_Idx>,
-    child_scopes  : Vec<Scope_Idx>}
+    pub(super) name          : String,
+
+    pub(super) parent_idx    : Option<Scope_Idx>,
+    // TODO : may be able to remove self_idx
+    pub(super) self_idx      : Scope_Idx,
+
+    pub(super) child_signals : Vec<Signal_Idx>,
+    pub(super) child_scopes  : Vec<Scope_Idx>}
 
 
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
-    pub(super) all_signals : Vec<SignalGeneric>,
-    // the root scope should always be placed at index 0
+    pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>}
-
-impl VCD {
-    pub fn new() -> Self {
-        let metadata = Metadata {
-            date      : None,
-            version   : None,
-            timescale : (None, Timescale::unit)};
-        VCD {
-            metadata    : metadata,
-            all_signals : Vec::<SignalGeneric>::new(),
-            all_scopes  : Vec::<Scope>::new()}
-        }
-    }

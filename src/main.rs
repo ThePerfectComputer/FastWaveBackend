@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
 
 
     let file = File::open(&args.path)?;
-    parse_vcd(file);
+    parse_vcd(file).unwrap();
 
     Ok(())
 }
