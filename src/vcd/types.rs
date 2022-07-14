@@ -59,4 +59,5 @@ pub(super) struct Scope {
 pub struct VCD {
     pub(super) metadata    : Metadata,
     pub(super) all_signals : Vec<Signal>,
-    pub(super) all_scopes  : Vec<Scope>}
+    pub(super) all_scopes  : Vec<Scope>,
+    pub(super) scope_roots : Vec<Scope_Idx>}

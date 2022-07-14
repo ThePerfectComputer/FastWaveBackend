@@ -27,25 +27,15 @@ The first build of the program may take some time.
 You can run all the tests with ``cargo test``
 
 # TODO
- - [x] We need a way to merge lines.
- - [x] We need to start regression testing the parser over all files
- - [x] Decide if I want to return option types
- - [x] Propagate all to question mark unwrap types.
- - [x] Don't want variation in hh:mm:ss
- - [x] parser_atoms -> combinator_atoms
- - [x] make parse/types.rs
- - [x] remove/replace calls to match_not_empty
- - [x] Split ``parse.rs``. It's getting too large.
- - [x] move list of files to separate test file/folder
+ - [ ] support multiple root scopes
  - [ ] support parsing dates with commas
  - [ ] Fix warning especially usage and restriction warnings once I'm
        able to successfully parse all sample VCDs.
 
- - [ ] Consolidate error messages and add cursors.
+ - [ ] Consolidate error messages and add cursors throughout.
  - [ ] Consider what to do with don't care values
-      will probably just convert them to strings for now.
+       will probably just convert them to strings for now.
  - [ ] Include line and possible column numbers
- - [ ] Change states to lowercase
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.
 
