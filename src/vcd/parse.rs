@@ -35,6 +35,8 @@ fn parse_var<'a>(
         "reg"        => {Ok(Sig_Type::Reg)}
         "string"     => {Ok(Sig_Type::Str)}
         "wire"       => {Ok(Sig_Type::Wire)}
+        "tri1"       => {Ok(Sig_Type::Tri1)}
+        "time"       => {Ok(Sig_Type::Time)}
         _ => {
             let err = format!("found keyword `{word}` but expected one of {expected_types} on {cursor:?}");
             Err(err)
@@ -118,22 +120,38 @@ fn parse_signal_tree<'a>(
     // $scope module reg_mag_i $end
     //        ^^^^^^ - module keyword
     let err = format!("reached end of file without parser leaving {}", function_name!());
-    ident(word_reader, "module")?;
+    let (keyword, cursor) = word_reader.next_word().ok_or(&err)?;
+
+    // TODO : just check if keyword is in expected
+    let expected = ["module", "begin", "task", "function"];
+    match keyword {
+        "module" => {Ok(())}
+        "begin" => {Ok(())}
+        "task" => {Ok(())}
+        "function" => {Ok(())}
+        _ => {
+            let err = format!("found keyword `{keyword}` but expected one of `{expected:?}` on {cursor:?}");
+            Err(err)
+        }
+    }.unwrap();
 
     // $scope module reg_mag_i $end
     //               ^^^^^^^^^ - scope name
-    let (scope_name, _) = word_reader.next_word().ok_or(err)?;
+    let (scope_name, _) = word_reader.next_word().ok_or(&err)?;
 
     let curr_scope_idx = Scope_Idx(vcd.all_scopes.len());
     
     // register this scope as a child of the current parent scope
-    // if there is a parent scope
+    // if there is a parent scope, or else we register this scope as
+    // root scope
     match parent_scope_idx {
         Some(Scope_Idx(parent_scope_idx)) => {
             let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx).unwrap();
             parent_scope.child_scopes.push(curr_scope_idx);
         }
-        None => {}
+        None => {
+            vcd.scope_roots.push(curr_scope_idx)
+        }
     }
 
     // add this scope to list of existing scopes
@@ -161,7 +179,7 @@ fn parse_signal_tree<'a>(
                 match residual {
                     "scope" => {
                         // recursive - parse inside of current scope tree
-                        parse_signal_tree(word_reader, Some(curr_scope_idx), vcd, signal_map);
+                        parse_signal_tree(word_reader, Some(curr_scope_idx), vcd, signal_map)?;
                     }
                     "var" => {
                         parse_var(word_reader, curr_scope_idx, vcd, signal_map)?;
@@ -170,8 +188,14 @@ fn parse_signal_tree<'a>(
                         ident(word_reader, "$end")?;
                         break
                     }
+                    // we ignore comments
+                    "comment" => {
+                        loop {
+                            if ident(word_reader, "$end").is_ok() {break}
+                        }
+                    }
                     _ => {
-                        let err = format!("found keyword `{residual}` but expected `$scope`, `$var`, or `$upscope` on {cursor:?}");
+                        let err = format!("found keyword `{residual}` but expected `$scope`, `$var`, `$comment`, or `$upscope` on {cursor:?}");
                         return Err(err)
                     }
                 }
@@ -187,47 +211,52 @@ fn parse_signal_tree<'a>(
     Ok(())
 }
 
-// TODO : make this a generic traversal function that applies specified 
-// functions upon encountering scopes and signals
-fn print_signal_tree(
-    root_scope_idx : Scope_Idx,
-    all_scopes     : &Vec<Scope>,
-    all_signals    : &Vec<Signal>,
-    depth : usize)
-{
-    let indent = " ".repeat(depth * 4);
-    let Scope_Idx(root_scope_idx) = root_scope_idx;
-    let root_scope = &all_scopes[root_scope_idx];
-    let root_scope_name = &root_scope.name;
+#[named]
+fn parse_scopes<'a>(
+    word_reader      : &mut WordReader,
+    parent_scope_idx : Option<Scope_Idx>,
+    vcd              : &'a mut VCD,
+    signal_map       : &mut HashMap<String, Signal_Idx>
+) -> Result<(), String> {
+    // we've already seen `$scope`, so here we just jump right in
+    parse_signal_tree(word_reader, None, vcd, signal_map)?;
 
-    println!("{indent}scope: {root_scope_name}");
+    let err = format!("reached end of file without parser leaving {}", function_name!());
+    let expected_keywords = ["$scope", "$enddefinitions"];
 
-    for Signal_Idx(ref signal_idx) in &root_scope.child_signals {
-        let child_signal = &all_signals[*signal_idx];
-        let name = match child_signal {
-            Signal::Data{name, ..} => {name}
-            Signal::Alias{name, ..} => {name}
-        };
-        println!("{indent} - sig: {name}")
+    loop {
+        let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+        match word {
+            "$scope" => {
+                parse_signal_tree(word_reader, None, vcd, signal_map)?;
+            }
+            "$enddefinitions" => {
+                ident(word_reader, "$end")?;
+                break
+            }
+            // we ignore comments
+            "comment" => {
+                loop {
+                    if ident(word_reader, "$end").is_ok() {break}
+                }
+            }
+            _ => {
+                let err = format!("found keyword `{word}` but expected oneof `{expected_keywords:?}` on {cursor:?}");
+                return Err(err)
+    
+            }
+        }
     }
-    println!();
 
-    for scope_idx in &root_scope.child_scopes {
-        // let Scope_Idx(ref scope_idx_usize) = scope_idx;
-        // let child_scope = &all_scopes[*scope_idx_usize];
-        print_signal_tree(*scope_idx, all_scopes, all_signals, depth+1);
-    }
-    // let root = vcd.all_scopes;
+    Ok(())
 }
 
-pub fn parse_vcd(file : File) -> Result<(), String> {
+
+pub fn parse_vcd(file : File) -> Result<VCD, String> {
     let mut word_gen = WordReader::new(file);
 
     let header = parse_metadata(&mut word_gen)?;
-    dbg!(&header);
 
-    // let (word, cursor) = word_gen.next_word().unwrap();
-    // cursor.error(word).unwrap();
     let mut signal_map = std::collections::HashMap::new();
 
     let mut vcd = VCD{
@@ -237,10 +266,9 @@ pub fn parse_vcd(file : File) -> Result<(), String> {
         scope_roots: vec![],
     };
 
-    parse_signal_tree(&mut word_gen, None, &mut vcd, &mut signal_map)?;
-    println!("printing signal tree");
-    print_signal_tree(Scope_Idx(0), &vcd.all_scopes, &vcd.all_signals, 0);
-    Ok(())
+    parse_scopes(&mut word_gen, None, &mut vcd, &mut signal_map)?;
+
+    Ok(vcd)
 }
 
 #[cfg(test)]
@@ -275,6 +303,25 @@ mod tests {
 
             let (scalar, timescale) = metadata.unwrap().timescale;
             assert!(scalar.is_some());
+        }
+
+    }
+
+    #[test]
+    fn scopes() {
+        // TODO: eventually, once all dates pass, merge the following
+        // two loops
+        // testing dates
+        for file_name in test::files {
+            let file = File::open(file_name).unwrap();
+            let vcd = parse_vcd(file);
+
+            if !vcd.is_ok() {
+                dbg!(file_name);
+                vcd.unwrap();
+            }
+
+            // assert!(vcd.is_ok());
         }
 
     }
