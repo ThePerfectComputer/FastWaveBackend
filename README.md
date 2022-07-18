@@ -27,10 +27,11 @@ The first build of the program may take some time.
 You can run all the tests with ``cargo test``
 
 # TODO
- - [ ] support multiple root scopes
  - [ ] support parsing dates with commas
  - [ ] Fix warning especially usage and restriction warnings once I'm
        able to successfully parse all sample VCDs.
+ - [ ] Should be able to load waveform whilst viewing it live.
+       - could be quite challenging to implement for various reasons
 
  - [ ] Consolidate error messages and add cursors throughout.
  - [ ] Consider what to do with don't care values
