@@ -8,7 +8,7 @@ PROPRIETARY - Copyright - Yehowshua Immanuel
  - loads 400MB of VCD waveform per second on an 8 core 2017 desktop CPU with NVMe storage
  - consumes roughly between 10 - 50MB of memory per GB of waveform
 
-## Planed Features
+## Planned Features
  - elegant/pretty UI
  - can be easily ported to work in browser via webassembly
  - allows high-performance custom Rust plugins to manipulate and
@@ -27,7 +27,8 @@ The first build of the program may take some time.
 You can run all the tests with ``cargo test``
 
 # TODO
- - [ ] support parsing dates with commas
+ - [ ] make a custon date parser for possibly up to 18 different versions(that 
+       is, for each possible tool).
  - [ ] Fix warning especially usage and restriction warnings once I'm
        able to successfully parse all sample VCDs.
  - [ ] Should be able to load waveform whilst viewing it live.
@@ -39,6 +40,10 @@ You can run all the tests with ``cargo test``
  - [ ] Include line and possible column numbers
  - [ ] Take a look at GTKWave parser to compare effificiency.
  - [ ] Send survey to community channel.
+
+# Questions to Answer
+ - [ ] Is it safe to assume that we may treat any values before the first
+       non-zero timestamp as having occured on `#0`?
 
 # Probably No Longer Needed
  - [ ] Should insert nodes in BFS order

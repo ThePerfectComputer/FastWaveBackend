@@ -1,5 +1,7 @@
 use std::{fs::File};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
+use num::BigInt;
+use num::bigint::ToBigInt;
 
 use super::*;
 
@@ -15,6 +17,32 @@ use metadata::*;
 mod scopes;
 use scopes::*;
 
+use function_name::named;
+
+#[named]
+fn parse_events<'a>(
+    word_reader      : &mut WordReader,
+    vcd              : &'a mut VCD,
+    signal_map       : &mut HashMap<String, Signal_Idx>
+) -> Result<(), String> {
+
+    loop {
+        let next_word = word_reader.next_word();
+        // if we've reached the end of the file, then there is obviously
+        // nothing left to do...
+        if next_word.is_none() {break};
+
+        let (word, cursor) = next_word.unwrap();
+        match &word[0..1] {
+            "$" => {continue}
+            "#" => {continue}
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
 pub fn parse_vcd(file : File) -> Result<VCD, String> {
     let mut word_gen = WordReader::new(file);
 
@@ -24,12 +52,14 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
 
     let mut vcd = VCD{
         metadata   : header,
+        cursor     : 0.to_bigint().unwrap(),
         all_signals: vec![],
         all_scopes : vec![],
         scope_roots: vec![],
     };
 
     parse_scopes(&mut word_gen, None, &mut vcd, &mut signal_map)?;
+    // parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
 
     Ok(vcd)
 }

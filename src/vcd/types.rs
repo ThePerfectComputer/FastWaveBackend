@@ -24,6 +24,9 @@ pub(super) struct Signal_Idx(pub(super) usize);
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
 #[derive(Debug)]
+pub(super) struct TimeStamp(BigInt);
+
+#[derive(Debug)]
 pub(super) enum Sig_Value {
     Numeric(BigInt),
     NonNumeric(String)}
@@ -36,7 +39,7 @@ pub(super) enum Signal{
          num_bits     : Option<usize>,
          // TODO : may be able to remove self_idx
          self_idx     : Signal_Idx,
-         timeline     : BTreeMap<BigInt, Sig_Value>,
+         timeline      : Vec<(TimeStamp, Sig_Value)>,
          scope_parent : Scope_Idx},
     Alias{
          name         : String,
@@ -58,6 +61,7 @@ pub(super) struct Scope {
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
+    pub(super) cursor      : BigInt,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
     pub(super) scope_roots : Vec<Scope_Idx>}

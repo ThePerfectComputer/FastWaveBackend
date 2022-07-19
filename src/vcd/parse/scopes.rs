@@ -84,7 +84,7 @@ pub(super) fn parse_var<'a>(
                 sig_type: var_type,
                 num_bits: no_bits,
                 self_idx: signal_idx,
-                timeline: BTreeMap::new(),
+                timeline: vec![],
                 scope_parent: parent_scope_idx };
             (signal, signal_idx)
         }
