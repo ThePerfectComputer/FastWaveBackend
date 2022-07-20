@@ -24,7 +24,7 @@ pub(super) struct Signal_Idx(pub(super) usize);
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
 #[derive(Debug)]
-pub(super) struct TimeStamp(BigInt);
+pub(super) struct TimeStamp(pub(super) BigInt);
 
 #[derive(Debug)]
 pub(super) enum Sig_Value {
@@ -61,7 +61,7 @@ pub(super) struct Scope {
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
-    pub(super) cursor      : BigInt,
+    pub (super) cursor     : BigInt,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
     pub(super) scope_roots : Vec<Scope_Idx>}

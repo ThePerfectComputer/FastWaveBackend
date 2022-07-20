@@ -16,12 +16,11 @@ struct Cli {
 fn main() -> std::io::Result<()> {
     let args = Cli::parse();
 
-
     let file = File::open(&args.path)?;
     let vcd = parse_vcd(file).unwrap();
 
-    println!("printing signal tree");
-    vcd.print_scopes();
+    // println!("printing signal tree");
+    // vcd.print_scopes();
 
     Ok(())
 }

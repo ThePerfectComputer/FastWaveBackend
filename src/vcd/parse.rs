@@ -32,10 +32,44 @@ fn parse_events<'a>(
         // nothing left to do...
         if next_word.is_none() {break};
 
+
         let (word, cursor) = next_word.unwrap();
         match &word[0..1] {
-            "$" => {continue}
-            "#" => {continue}
+            "$" => {}
+            "#" => {
+                let value = &word[1..];
+                let time_cursor = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
+                    format!("failed to parse {value} as BigInt at {cursor:?}").as_str())?;
+                vcd.cursor = time_cursor;
+            }
+            "0" => {
+                // 0 must be in the first word in the line
+                let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
+                if word_in_line_idx == 1 {
+                    let hash = &word[1..].to_string();
+                    let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                        format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
+
+                    // let value = 0.to_bigint().unwrap();
+                    // let pair = (TimeStamp(vcd.cursor.clone()), Sig_Value::Numeric(value));
+                    // timeline.push(pair);
+                    let signal_idx = 
+                    {
+                        let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                        match signal {
+                        Signal::Data {..} => {signal_idx}
+                        Signal::Alias {name, signal_alias} => {
+                                let Signal_Idx(ref signal_idx) = signal_alias;
+                                signal_idx
+
+                            }
+                        }
+                    };
+
+                    let signal = vcd.all_signals.get_mut(*signal_idx).unwrap();
+                }
+            }
+            "1" => {}
             _ => {}
         }
     }
@@ -59,7 +93,8 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
     };
 
     parse_scopes(&mut word_gen, None, &mut vcd, &mut signal_map)?;
-    // parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
+    parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
+    dbg!(&vcd.cursor);
 
     Ok(vcd)
 }

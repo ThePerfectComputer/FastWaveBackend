@@ -6,11 +6,11 @@ use std::io::prelude::*;
 use std::io;
 
 #[derive(Debug)]
-struct Line(usize);
+pub(super) struct Line(pub(super) usize);
 #[derive(Debug)]
-struct Word(usize);
+pub(super) struct Word(pub(super) usize);
 #[derive(Debug)]
-pub struct Cursor(Line, Word);
+pub(super) struct Cursor(pub(super) Line, pub(super) Word);
 
 impl Cursor {
     pub(super) fn error(&self, word : &str) -> Result<(), String> {
