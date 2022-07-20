@@ -34,6 +34,9 @@ fn parse_events<'a>(
 
 
         let (word, cursor) = next_word.unwrap();
+        let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
+        // we only want to match on the first word in a line
+        if word_in_line_idx != 1 {continue}
         match &word[0..1] {
             "$" => {}
             "#" => {
@@ -43,33 +46,87 @@ fn parse_events<'a>(
                 vcd.cursor = time_cursor;
             }
             "0" => {
-                // 0 must be in the first word in the line
-                let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
-                if word_in_line_idx == 1 {
-                    let hash = &word[1..].to_string();
-                    let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
-                        format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
+                // lokup signal idx
+                let hash = &word[1..].to_string();
+                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                    format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
 
-                    // let value = 0.to_bigint().unwrap();
-                    // let pair = (TimeStamp(vcd.cursor.clone()), Sig_Value::Numeric(value));
-                    // timeline.push(pair);
-                    let signal_idx = 
-                    {
-                        let signal = vcd.all_signals.get(*signal_idx).unwrap();
-                        match signal {
-                        Signal::Data {..} => {signal_idx}
-                        Signal::Alias {name, signal_alias} => {
-                                let Signal_Idx(ref signal_idx) = signal_alias;
-                                signal_idx
+                // account for fact that signal idx could be an alias, so there
+                // could be one step of indirection
+                let signal_idx = 
+                {
+                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                    match signal {
+                    Signal::Data {..} => {signal_idx.clone()}
+                    Signal::Alias {name, signal_alias} => {
+                            let Signal_Idx(ref signal_idx) = signal_alias;
+                            signal_idx.clone()
 
-                            }
                         }
-                    };
+                    }
+                };
 
-                    let signal = vcd.all_signals.get_mut(*signal_idx).unwrap();
-                }
+                // after handling potential indirection, go ahead and update the timeline
+                // of the signal signal_idx references
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                match signal {
+                    Signal::Data {name, sig_type, num_bits, 
+                    self_idx, timeline, scope_parent} => {
+                        let value = 0.to_bigint().unwrap();
+                        let pair = (TimeStamp(vcd.cursor.clone()), Sig_Value::Numeric(value));
+                        timeline.push(pair);
+                        Ok(())
+                    }
+                    Signal::Alias {..} => {
+                        let (f, l )= (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                                This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
             }
-            "1" => {}
+            "1" => {
+                // lokup signal idx
+                let hash = &word[1..].to_string();
+                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                    format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
+
+                // account for fact that signal idx could be an alias, so there
+                // could be one step of indirection
+                let signal_idx = 
+                {
+                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                    match signal {
+                    Signal::Data {..} => {signal_idx.clone()}
+                    Signal::Alias {name, signal_alias} => {
+                            let Signal_Idx(ref signal_idx) = signal_alias;
+                            signal_idx.clone()
+
+                        }
+                    }
+                };
+
+                // after handling potential indirection, go ahead and update the timeline
+                // of the signal signal_idx references
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                match signal {
+                    Signal::Data {name, sig_type, num_bits, 
+                    self_idx, timeline, scope_parent} => {
+                        let value = 1.to_bigint().unwrap();
+                        let pair = (TimeStamp(vcd.cursor.clone()), Sig_Value::Numeric(value));
+                        timeline.push(pair);
+                        Ok(())
+                    }
+                    Signal::Alias {..} => {
+                        let (f, l )= (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                                This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
+            }
             _ => {}
         }
     }
