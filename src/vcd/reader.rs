@@ -5,11 +5,11 @@ use std::str;
 use std::io::prelude::*;
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct Line(pub(super) usize);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct Word(pub(super) usize);
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct Cursor(pub(super) Line, pub(super) Word);
 
 impl Cursor {
@@ -26,6 +26,7 @@ pub struct WordReader {
     buffers      : Vec<String>,
     curr_line    : usize,
     str_slices   : VecDeque<(*const u8, usize, Cursor)>,
+    curr_slice   : Option<(*const u8, usize, Cursor)>,
 }
 
 impl WordReader {
@@ -36,7 +37,8 @@ impl WordReader {
             EOF          : false,
             buffers      : vec![],
             curr_line    : 0,
-            str_slices   : VecDeque::new()
+            str_slices   : VecDeque::new(),
+            curr_slice   : None
         }
     }
 
@@ -83,7 +85,22 @@ impl WordReader {
         unsafe {
             let (ptr, len, position) = self.str_slices.pop_front().unwrap();
             let slice = slice::from_raw_parts(ptr, len);
+            self.curr_slice = Some((ptr, len, position.clone()));
             return Some((str::from_utf8(slice).unwrap(), position));
         };
+    }
+
+    pub(super) fn curr_word(&mut self) -> Option<(&str, Cursor)> {
+        match &self.curr_slice {
+            Some(slice) => {
+                unsafe {
+                    let (ptr, len, position) = slice.clone();
+                    let slice = slice::from_raw_parts(ptr, len);
+                    Some((str::from_utf8(slice).unwrap(), position))
+                }
+
+            }
+            None => {None}
+        }
     }
 }

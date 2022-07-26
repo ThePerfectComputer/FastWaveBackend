@@ -33,6 +33,7 @@ You can run all the tests with ``cargo test``
        able to successfully parse all sample VCDs.
  - [ ] Change error messages to line and filenames. Go through all calls to ``format!``
        whilst also keep performance in mind.
+ - [ ] Create compressed fungible numeric enums with good heuristic support.
  - [ ] Print out git commit or release number.
  - [ ] Should be able to load waveform whilst viewing it live.
        - could be quite challenging to implement for various reasons

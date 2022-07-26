@@ -1,3 +1,4 @@
+use core::time;
 use std::collections::{BTreeMap, HashMap};
 use chrono::prelude::*;
 use num::BigInt;
@@ -24,11 +25,26 @@ pub(super) struct Signal_Idx(pub(super) usize);
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
 #[derive(Debug)]
-pub(super) struct TimeStamp(pub(super) BigInt);
+pub(super) enum TimeStamp {
+    u8(u8), 
+    u16(u16),
+    u32(u32),
+    u64(u64),
+    BigInt(BigInt),
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum Value {
+    u8(u8), 
+    u16(u16),
+    u32(u32),
+    u64(u64),
+    BigInt(BigInt),
+}
 
 #[derive(Debug)]
 pub(super) enum Sig_Value {
-    Numeric(BigInt),
+    Numeric(u64),
     NonNumeric(String)}
 
 #[derive(Debug)]
@@ -39,7 +55,7 @@ pub(super) enum Signal{
          num_bits     : Option<usize>,
          // TODO : may be able to remove self_idx
          self_idx     : Signal_Idx,
-         timeline      : Vec<(TimeStamp, Sig_Value)>,
+         timeline      : Vec<(Value, Value)>,
          scope_parent : Scope_Idx},
     Alias{
          name         : String,
@@ -61,7 +77,7 @@ pub(super) struct Scope {
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
-    pub (super) cursor     : BigInt,
+    pub (super) cursor     : Value,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
     pub(super) scope_roots : Vec<Scope_Idx>}
@@ -106,5 +122,34 @@ impl VCD {
         for scope_root in &self.scope_roots {
             self.print_scope_tree(*scope_root, 0);
         }
+    }
+
+    pub fn print_longest_signal(&self) {
+        let mut idx = 0usize;
+        let mut max_len = 0usize;
+        let mut signal_name = String::new();
+
+        for signal in &self.all_signals {
+            match signal {
+                Signal::Alias {..} => {}
+                Signal::Data { 
+                    name, 
+                    sig_type, 
+                    num_bits, 
+                    self_idx, 
+                    timeline, 
+                    scope_parent } => {
+                        if timeline.len() > max_len {
+                            max_len = timeline.len();
+                            let Signal_Idx(idx_usize) = self_idx;
+                            idx = *idx_usize;
+                            signal_name = name.clone();
+                        }
+
+                    }
+            }
+        }
+
+        dbg!((idx, max_len, signal_name));
     }
 }

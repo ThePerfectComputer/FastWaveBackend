@@ -315,10 +315,10 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
                             metadata.timescale = timescale.unwrap();
                         }
                     }
-                    // in VCDs, the scope keyword indicates the end of the metadata section
                     "scope"     => {break}
+                    "var"       => {break}
                     // we keep searching for words until we've found one of the following
-                    // keywords, ["version", "timescale", "scope"]
+                    // keywords, ["version", "timescale", "scope", "var"]
                     _ => {}
                 }
             }

@@ -52,6 +52,7 @@ pub(super) fn parse_var<'a>(
     //                  ^ - signal_alias
     let (word, cursor) = word_reader.next_word().ok_or(&err)?;
     let signal_alias = word.to_string();
+    // dbg!(&signal_alias);
 
     // $var parameter 3 a IDLE $end
     //                    ^^^^ - full_signal_name(can extend until $end)
