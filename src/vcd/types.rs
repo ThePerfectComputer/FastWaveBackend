@@ -21,6 +21,9 @@ pub(super) struct Scope_Idx(pub(super) usize);
 #[derive(Debug, Copy, Clone)]
 pub(super) struct Signal_Idx(pub(super) usize);
 
+#[derive(Debug, Copy, Clone)]
+pub(super) struct TimelineIdx(pub(super) usize);
+
 #[derive(Debug)]
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
@@ -42,6 +45,8 @@ pub(super) enum Value {
     BigInt(BigInt),
 }
 
+pub type BigNum = Vec<u8>;
+
 #[derive(Debug)]
 pub(super) enum Sig_Value {
     Numeric(u64),
@@ -55,7 +60,7 @@ pub(super) enum Signal{
          num_bits     : Option<usize>,
          // TODO : may be able to remove self_idx
          self_idx     : Signal_Idx,
-         timeline      : Vec<(Value, Value)>,
+         timeline      : Vec<(TimelineIdx, BigNum)>,
          scope_parent : Scope_Idx},
     Alias{
          name         : String,
@@ -77,7 +82,8 @@ pub(super) struct Scope {
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
-    pub (super) cursor     : Value,
+    pub(super) cursor     : Value,
+    pub(super) timeline   : Vec<BigNum>,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
     pub(super) scope_roots : Vec<Scope_Idx>}

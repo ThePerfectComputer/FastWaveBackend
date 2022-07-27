@@ -164,8 +164,9 @@ fn parse_events<'a>(
                         }
                     }
                     else {
+                        let (f, l )= (file!(), line!());
                         let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
-                            format!("failed to parse {value} as BigInt at {cursor:?}").as_str())?;
+                            format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}").as_str())?;
                         vcd.cursor = Value::BigInt(value);
                         Ok(())
                     };
@@ -187,12 +188,14 @@ fn parse_events<'a>(
                         // There could have been other parse errors...
                         // Return Err below if there were.
                         if e.kind() != &IntErrorKind::PosOverflow {
-                            Err(format!("{e:?}"))?;
+                            let (f, l )= (file!(), line!());
+                            Err(format!("Error near {f}:{l}. {e:?}"))?;
                         }
 
                         match value.parse::<u16>() {
                             Ok(value) => {
                                 vcd.cursor = Value::u16(value);
+                                println!("switching to u16");
                                 Ok(())
                             }
                             Err(e) => Err(e)
@@ -215,12 +218,14 @@ fn parse_events<'a>(
                         // There could have been other parse errors...
                         // Return Err below if there were.
                         if e.kind() != &IntErrorKind::PosOverflow {
-                            Err(format!("{e:?}"))?;
+                            let (f, l )= (file!(), line!());
+                            Err(format!("Error near {f}:{l}. {e:?}"))?;
                         }
 
                         match value.parse::<u32>() {
                             Ok(value) => {
                                 vcd.cursor = Value::u32(value);
+                                println!("switching to u32");
                                 Ok(())
                             }
                             Err(e) => Err(e)
@@ -243,17 +248,66 @@ fn parse_events<'a>(
                         // There could have been other parse errors...
                         // Return Err below if there were.
                         if e.kind() != &IntErrorKind::PosOverflow {
-                            Err(format!("{e:?}"))?;
+                            let (f, l )= (file!(), line!());
+                            Err(format!("Error near {f}:{l}. {e:?}"))?;
                         }
 
                         match value.parse::<u64>() {
                             Ok(value) => {
                                 vcd.cursor = Value::u64(value);
+                                println!("switching to u64");
                                 Ok(())
                             }
                             Err(e) => Err(e)
                         }
                     };
+
+                // If there was no parse error, we don't evaluate any more logic
+                // in this match arm and simply continue to the next iteration of 
+                // the outer loop to evaluate the next word.
+                if parse_ok.is_ok() {
+                    continue
+                }
+
+                // Try parsing value as u64 since there was a previous 
+                // PosOverflow error, and record if this parse attempt 
+                // was Ok or Err in parse_ok.
+                let parse_ok = 
+                    {
+                        let e = parse_ok.unwrap_err();
+                        // There could have been other parse errors...
+                        // Return Err below if there were.
+                        if e.kind() != &IntErrorKind::PosOverflow {
+                            let (f, l )= (file!(), line!());
+                            Err(format!("Error near {f}:{l}. {e:?}"))?;
+                        }
+
+                        match value.parse::<u64>() {
+                            Ok(value) => {
+                                vcd.cursor = Value::u64(value);
+                                println!("switching to u64");
+                                Ok(())
+                            }
+                            Err(e) => Err(e)
+                        }
+                    };
+
+                // Try parsing value as BigInt since there was a previous 
+                // PosOverflow error and propagate any Result Errors.
+                let e = parse_ok.unwrap_err();
+                // There could have been other parse errors...
+                // Return Err below if there were.
+                if e.kind() != &IntErrorKind::PosOverflow {
+                    let (f, l )= (file!(), line!());
+                    Err(format!("Error near {f}:{l}. {e:?}"))?;
+                }
+
+                let (f, l )= (file!(), line!());
+                let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
+                    format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}").as_str())?;
+                vcd.cursor = Value::BigInt(value);
+                println!("switching to BigInt");
+
             }
             "0" => {
                 // lokup signal idx
@@ -278,14 +332,14 @@ fn parse_events<'a>(
 
                 // after handling potential indirection, go ahead and update the timeline
                 // of the signal signal_idx references
-                let signal = vcd.all_signals.get_mut(0usize).unwrap();
-                // let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
                     Signal::Data {name, sig_type, num_bits, 
                     self_idx, timeline, scope_parent} => {
-                        let value = 0.to_bigint().unwrap();
-                        let pair = (vcd.cursor.clone(), Value::u8(0));
-                        timeline.push(pair);
+                        // let pair = (0.to_bigint(), Value::u8(0));
+                        let pair = (Value::u8(0), Value::u8(0));
+                        let t = 0u32.to_be_bytes();
+                        // timeline.push(pair);
                         Ok(())
                     }
                     Signal::Alias {..} => {
@@ -358,6 +412,7 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
     let mut vcd = VCD{
         metadata   : header,
         cursor     : Value::u8(0),
+        timeline   : vec![],
         all_signals: vec![],
         all_scopes : vec![],
         scope_roots: vec![],
