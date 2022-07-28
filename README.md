@@ -1,18 +1,16 @@
-# Disclaimer
-PROPRIETARY - Copyright - Yehowshua Immanuel
+Copyright - Yehowshua Immanuel
 
-# The Beginnings of a high-performance, low memory footprint VCD Viewer in Rust for massive multi-GB waveforms
+# A High performance, VCD Parser written in Rust
 
 ## Current Features
- - very fast
- - loads 400MB of VCD waveform per second on an 8 core 2017 desktop CPU with NVMe storage
- - consumes roughly between 10 - 50MB of memory per GB of waveform
+ - pretty fast
 
 ## Planned Features
- - elegant/pretty UI
- - can be easily ported to work in browser via webassembly
- - allows high-performance custom Rust plugins to manipulate and
-   generate new waveforms live
+ - rapid log2n scrubbing through a signal's timeline
+
+# Current Limitations
+Unable to handle VCD files that have signals with more than 
+2^32 - 1 = 4,294,967,295 deltas/changes.
 
 ## Running
 
