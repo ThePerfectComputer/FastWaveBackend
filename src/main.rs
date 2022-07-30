@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File};
 use clap::Parser;
 
 pub mod test;
@@ -6,6 +6,8 @@ use test::*;
 
 pub mod vcd;
 use vcd::parse_vcd;
+
+use std::mem::size_of_val;
 
 #[derive(Parser)]
 struct Cli {
@@ -26,6 +28,10 @@ fn main() -> std::io::Result<()> {
     println!("Elapsed: {:.2?}", elapsed);
 
     vcd.print_longest_signal();
+    dbg!(size_of_val(&*vcd.timeline));
+    // unsafe {
+    //     let sz = size_of_val(&*vcd.timeline);
+    // }
 
     // println!("printing signal tree");
     // vcd.print_scopes();

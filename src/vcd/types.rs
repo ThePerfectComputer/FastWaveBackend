@@ -22,7 +22,10 @@ pub(super) struct Scope_Idx(pub(super) usize);
 pub(super) struct Signal_Idx(pub(super) usize);
 
 #[derive(Debug, Copy, Clone)]
-pub(super) struct TimelineIdx(pub(super) usize);
+pub(super) struct TimelineIdx(pub(super) u32);
+
+#[derive(Debug, Copy, Clone)]
+pub struct StartIdx(pub(super) u32);
 
 #[derive(Debug)]
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
@@ -55,12 +58,18 @@ pub(super) enum Sig_Value {
 #[derive(Debug)]
 pub(super) enum Signal{
     Data{
-         name         : String,
-         sig_type     : Sig_Type,
-         num_bits     : Option<usize>,
+         name             : String,
+         sig_type         : Sig_Type,
+         // I've seen a 0 bit signal parameter in a xilinx
+         // simulation before that gets assigne 1 bit values.
+         // I consider this to be bad behavior. We capture such
+         // errors in the following type.
+         signal_error     : Option<String>,
+         num_bits         : Option<usize>,
          // TODO : may be able to remove self_idx
-         self_idx     : Signal_Idx,
-         timeline      : Vec<(TimelineIdx, BigNum)>,
+         self_idx         : Signal_Idx,
+         timeline         : Vec<u8>,
+         timeline_markers : Vec<(TimelineIdx)>,
          scope_parent : Scope_Idx},
     Alias{
          name         : String,
@@ -79,11 +88,12 @@ pub(super) struct Scope {
     pub(super) child_scopes  : Vec<Scope_Idx>}
 
 
+// TODO: document how timeline is represented
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata    : Metadata,
-    pub(super) cursor     : Value,
-    pub(super) timeline   : Vec<BigNum>,
+    pub timeline           : Vec<u8>,
+    pub timeline_markers   : Vec<StartIdx>,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
     pub(super) scope_roots : Vec<Scope_Idx>}
@@ -130,6 +140,24 @@ impl VCD {
         }
     }
 
+    // pub fn average_len(&self) -> f64{
+    //     let mut total_lens = 0.0;
+    //     for el in &self.timeline {
+    //         total_lens += el.len() as f64;
+    //     }
+
+    //     return total_lens/(self.timeline.len() as f64);
+    // }
+
+    // pub fn total_len(&self) -> usize{
+    //     let mut total_lens = 0usize;
+    //     for el in &self.timeline {
+    //         total_lens += el.len();
+    //     }
+
+    //     return total_lens;
+    // }
+
     pub fn print_longest_signal(&self) {
         let mut idx = 0usize;
         let mut max_len = 0usize;
@@ -144,7 +172,7 @@ impl VCD {
                     num_bits, 
                     self_idx, 
                     timeline, 
-                    scope_parent } => {
+                    .. } => {
                         if timeline.len() > max_len {
                             max_len = timeline.len();
                             let Signal_Idx(idx_usize) = self_idx;

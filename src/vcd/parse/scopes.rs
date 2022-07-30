@@ -40,7 +40,7 @@ pub(super) fn parse_var<'a>(
     let no_bits = match var_type {
         Sig_Type::Integer | Sig_Type::Parameter |
         Sig_Type::Real    | Sig_Type::Reg       |
-        Sig_Type::Wire => {
+        Sig_Type::Wire    | Sig_Type::Tri1 => {
             let no_bits = word.parse::<usize>().expect(parse_err.as_str());
             Some(no_bits)
         }
@@ -83,9 +83,11 @@ pub(super) fn parse_var<'a>(
             let signal = Signal::Data{
                 name: full_signal_name,
                 sig_type: var_type,
+                signal_error: None,
                 num_bits: no_bits,
                 self_idx: signal_idx,
                 timeline: vec![],
+                timeline_markers: vec![],
                 scope_parent: parent_scope_idx };
             (signal, signal_idx)
         }

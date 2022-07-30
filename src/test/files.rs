@@ -30,6 +30,7 @@ pub const files : [&str; 30] = [
     "./test-vcd-files/vivado/iladata.vcd",
     "./test-vcd-files/xilinx_isim/test.vcd",
     "./test-vcd-files/xilinx_isim/test1.vcd",
+    // TODO : add signal ignore list to handle bitwidth mismatches
     "./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd"
 ];
 

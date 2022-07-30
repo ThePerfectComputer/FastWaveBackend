@@ -109,7 +109,6 @@ fn parse_events<'a>(
         // nothing left to do...
         if next_word.is_none() {break};
 
-
         let (word, cursor) = next_word.unwrap();
         let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
         // we only want to match on the first word in a line
@@ -118,202 +117,26 @@ fn parse_events<'a>(
             "$" => {}
             "#" => {
                 let value = &word[1..];
-                // we try to parse the timestamp into the Value unsigned
-                // variant used to hold the previous timestamp. Doing this
-                // may fail with PosOverflow, which we would store in parse_ok,
-                // and later try to remedy with bigger unsigned variants of Value.
-                let parse_ok = 
-                    if let Value::u8(_) = vcd.cursor {
-                        let value = value.parse::<u8>();
-                        match value {
-                            Ok(value) => {
-                                vcd.cursor = Value::u8(value);
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    }
-                    else if let Value::u16(_) = vcd.cursor {
-                        let value = value.parse::<u16>();
-                        match value {
-                            Ok(value) => {
-                                vcd.cursor = Value::u16(value);
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    }
-                    else if let Value::u32(_) = vcd.cursor {
-                        let value = value.parse::<u32>();
-                        match value {
-                            Ok(value) => {
-                                vcd.cursor = Value::u32(value);
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    }
-                    else if let Value::u64(_) = vcd.cursor {
-                        let value = value.parse::<u64>();
-                        match value {
-                            Ok(value) => {
-                                vcd.cursor = Value::u64(value);
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    }
-                    else {
-                        let (f, l )= (file!(), line!());
-                        let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
-                            format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}").as_str())?;
-                        vcd.cursor = Value::BigInt(value);
-                        Ok(())
-                    };
-                
-
-                // If there was no parse error, we don't evaluate any more logic
-                // in this match arm and simply continue to the next iteration of 
-                // the outer loop to evaluate the next word.
-                if parse_ok.is_ok() {
-                    continue
-                }
-
-                // Try parsing value as u16 since there was a previous 
-                // PosOverflow error, and record if this parse attempt 
-                // was Ok or Err in parse_ok.
-                let parse_ok = 
-                    {
-                        let e = parse_ok.unwrap_err();
-                        // There could have been other parse errors...
-                        // Return Err below if there were.
-                        if e.kind() != &IntErrorKind::PosOverflow {
-                            let (f, l )= (file!(), line!());
-                            Err(format!("Error near {f}:{l}. {e:?}"))?;
-                        }
-
-                        match value.parse::<u16>() {
-                            Ok(value) => {
-                                vcd.cursor = Value::u16(value);
-                                println!("switching to u16");
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    };
-
-                // If there was no parse error, we don't evaluate any more logic
-                // in this match arm and simply continue to the next iteration of 
-                // the outer loop to evaluate the next word.
-                if parse_ok.is_ok() {
-                    continue
-                }
-
-                // Try parsing value as u32 since there was a previous 
-                // PosOverflow error, and record if this parse attempt 
-                // was Ok or Err in parse_ok.
-                let parse_ok = 
-                    {
-                        let e = parse_ok.unwrap_err();
-                        // There could have been other parse errors...
-                        // Return Err below if there were.
-                        if e.kind() != &IntErrorKind::PosOverflow {
-                            let (f, l )= (file!(), line!());
-                            Err(format!("Error near {f}:{l}. {e:?}"))?;
-                        }
-
-                        match value.parse::<u32>() {
-                            Ok(value) => {
-                                vcd.cursor = Value::u32(value);
-                                println!("switching to u32");
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    };
-
-                // If there was no parse error, we don't evaluate any more logic
-                // in this match arm and simply continue to the next iteration of 
-                // the outer loop to evaluate the next word.
-                if parse_ok.is_ok() {
-                    continue
-                }
-
-                // Try parsing value as u64 since there was a previous 
-                // PosOverflow error, and record if this parse attempt 
-                // was Ok or Err in parse_ok.
-                let parse_ok = 
-                    {
-                        let e = parse_ok.unwrap_err();
-                        // There could have been other parse errors...
-                        // Return Err below if there were.
-                        if e.kind() != &IntErrorKind::PosOverflow {
-                            let (f, l )= (file!(), line!());
-                            Err(format!("Error near {f}:{l}. {e:?}"))?;
-                        }
-
-                        match value.parse::<u64>() {
-                            Ok(value) => {
-                                vcd.cursor = Value::u64(value);
-                                println!("switching to u64");
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    };
-
-                // If there was no parse error, we don't evaluate any more logic
-                // in this match arm and simply continue to the next iteration of 
-                // the outer loop to evaluate the next word.
-                if parse_ok.is_ok() {
-                    continue
-                }
-
-                // Try parsing value as u64 since there was a previous 
-                // PosOverflow error, and record if this parse attempt 
-                // was Ok or Err in parse_ok.
-                let parse_ok = 
-                    {
-                        let e = parse_ok.unwrap_err();
-                        // There could have been other parse errors...
-                        // Return Err below if there were.
-                        if e.kind() != &IntErrorKind::PosOverflow {
-                            let (f, l )= (file!(), line!());
-                            Err(format!("Error near {f}:{l}. {e:?}"))?;
-                        }
-
-                        match value.parse::<u64>() {
-                            Ok(value) => {
-                                vcd.cursor = Value::u64(value);
-                                println!("switching to u64");
-                                Ok(())
-                            }
-                            Err(e) => Err(e)
-                        }
-                    };
-
-                // Try parsing value as BigInt since there was a previous 
-                // PosOverflow error and propagate any Result Errors.
-                let e = parse_ok.unwrap_err();
-                // There could have been other parse errors...
-                // Return Err below if there were.
-                if e.kind() != &IntErrorKind::PosOverflow {
-                    let (f, l )= (file!(), line!());
-                    Err(format!("Error near {f}:{l}. {e:?}"))?;
-                }
-
                 let (f, l )= (file!(), line!());
                 let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
                     format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}").as_str())?;
-                vcd.cursor = Value::BigInt(value);
-                println!("switching to BigInt");
-
+                    // TODO : u32 helps with less memory, but should ideally likely be
+                    // configurable.
+                let (f, l )= (file!(), line!());
+                let start_idx = u32::try_from(vcd.timeline.len()).map_err(
+                    |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                vcd.timeline_markers.push(StartIdx(start_idx));
+                let (_, mut value) = value.to_bytes_be();
+                vcd.timeline.append(&mut value);
             }
+
+            // handle the case of a one bit signal whose value is set to `0`
             "0" => {
-                // lokup signal idx
-                let hash = &word[1..].to_string();
+                // lookup signal idx
+                let hash = &word[1..];
+                let (f, l )= (file!(), line!());
                 let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
-                    format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
+                    format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}").as_str())?;
 
                 // account for fact that signal idx could be an alias, so there
                 // could be one step of indirection
@@ -321,7 +144,7 @@ fn parse_events<'a>(
                 {
                     let signal = vcd.all_signals.get(*signal_idx).unwrap();
                     match signal {
-                    Signal::Data {..} => {signal_idx.clone()}
+                    Signal::Data {..} => {*signal_idx}
                     Signal::Alias {name, signal_alias} => {
                             let Signal_Idx(ref signal_idx) = signal_alias;
                             signal_idx.clone()
@@ -334,28 +157,162 @@ fn parse_events<'a>(
                 // of the signal signal_idx references
                 let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
-                    Signal::Data {name, sig_type, num_bits, 
-                    self_idx, timeline, scope_parent} => {
-                        // let pair = (0.to_bigint(), Value::u8(0));
-                        let pair = (Value::u8(0), Value::u8(0));
-                        let t = 0u32.to_be_bytes();
-                        // timeline.push(pair);
+                    Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
+                    self_idx, timeline, timeline_markers, scope_parent} => {
+
+                        // if this is a bad signal, go ahead and skip it
+                        if signal_error.is_some() {continue;}
+
+                        // Get bitwidth and verify that it is 1.
+                        // Also account for the error case of a bitwidth of `None`
+                        match num_bits {
+                            Some(ref num_bits) => {
+                                if *num_bits != 1 {
+                                    let (f, l) = (file!(), line!());
+                                    let msg = format!("\
+                                        Error near {f}:{l}. The bitwidth for signal {name} \
+                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        `{num_bits}`. \
+                                        This error occurred while parsing the vcd file at \
+                                        {cursor:?}");
+                                    signal_error.insert(msg);
+                                    continue;
+                                }
+                            }
+                            None => {
+                                let (f, l) = (file!(), line!());
+                                let msg = format!("\
+                                    Error near {f}:{l}. The bitwidth for signal {name} \
+                                    must be specified for a signal of type {sig_type:?}. \
+                                    This error occurred while parsing the vcd file at \
+                                    {cursor:?}");
+                                Err(msg)?;
+                            }
+                        };
+
+                        let (f, l )= (file!(), line!());
+                        let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let timeline_idx = TimelineIdx(timeline_idx);
+
+                        let (f, l )= (file!(), line!());
+                        let start_idx = u32::try_from(timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let start_idx    = StartIdx(start_idx);
+                        // let pair = (timeline_idx, start_idx);
+                        timeline_markers.push(timeline_idx);
+                        timeline.push(0u8);
                         Ok(())
                     }
                     Signal::Alias {..} => {
                         let (f, l )= (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
-                                This error occurred while parsing vcd file at {cursor:?}");
+                             This error occurred while parsing vcd file at {cursor:?}");
                         Err(msg)
                     }
                 }?;
             }
-            // "1" => {
-            //     // lokup signal idx
-            //     let hash = &word[1..].to_string();
-            //     let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
-            //         format!("failed to lookup signal {hash} at {cursor:?}").as_str())?;
+
+            // handle the case of a one bit signal whose value is set to `1`
+            "1" => {
+                // lokup signal idx
+                let hash = &word[1..];
+                let (f, l )= (file!(), line!());
+                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                    format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}").as_str())?;
+
+                // account for fact that signal idx could be an alias, so there
+                // could be one step of indirection
+                let signal_idx = 
+                {
+                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                    match signal {
+                    Signal::Data {..} => {*signal_idx}
+                    Signal::Alias {name, signal_alias} => {
+                            let Signal_Idx(ref signal_idx) = signal_alias;
+                            signal_idx.clone()
+
+                        }
+                    }
+                };
+
+                // after handling potential indirection, go ahead and update the timeline
+                // of the signal signal_idx references
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                match signal {
+                    Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
+                    self_idx, timeline, timeline_markers, scope_parent} => {
+
+                        // if this is a bad signal, go ahead and skip it
+                        if signal_error.is_some() {continue;}
+
+                        // Get bitwidth and verify that it is 1.
+                        // Also account for the error case of a bitwidth of `None`
+                        match num_bits {
+                            Some(ref num_bits) => {
+                                if *num_bits != 1 {
+                                    let (f, l) = (file!(), line!());
+                                    let msg = format!("\
+                                        Error near {f}:{l}. The bitwidth for signal {name} \
+                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        `{num_bits}`. \
+                                        This error occurred while parsing the vcd file at \
+                                        {cursor:?}");
+                                    signal_error.insert(msg);
+                                    continue;
+                                }
+                            }
+                            None => {
+                                let (f, l) = (file!(), line!());
+                                let msg = format!("\
+                                    Error near {f}:{l}. The bitwidth for signal {name} \
+                                    must be specified for a signal of type {sig_type:?}. \
+                                    This error occurred while parsing the vcd file at \
+                                    {cursor:?}");
+                                Err(msg)?;
+                            }
+                        };
+
+                        let (f, l )= (file!(), line!());
+                        let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let timeline_idx = TimelineIdx(timeline_idx);
+
+                        let (f, l )= (file!(), line!());
+                        let start_idx = u32::try_from(timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let start_idx    = StartIdx(start_idx);
+                        // let pair = (timeline_idx, start_idx);
+                        timeline_markers.push(timeline_idx);
+                        timeline.push(1u8);
+                        Ok(())
+                    }
+                    Signal::Alias {..} => {
+                        let (f, l )= (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                             This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
+            }
+
+            // handle the case of an n bit signal whose value must be parse
+            // "b" => {
+            //     // let binary_value = &word[1..];
+            //     // let (f, l )= (file!(), line!());
+            //     // let value = BigInt::parse_bytes(binary_value.as_bytes(), 2).ok_or(
+            //     //     format!("Error near {f}:{l}. Failed to parse {binary_value} as BigInt at {cursor:?}").as_str())?;
+            //     // let (_, mut value) = value.to_bytes_be();
+                
+            //     // this word should be the signal alias
+            //     let (word, cursor) = word_reader.next_word().unwrap();
+
+            //     // lookup signal idx
+            //     let (f, l )= (file!(), line!());
+            //     let Signal_Idx(ref signal_idx) = signal_map.get(word).ok_or(
+            //         format!("Error near {f}:{l}. Failed to lookup signal {word} at {cursor:?}").as_str())?;
 
             //     // account for fact that signal idx could be an alias, so there
             //     // could be one step of indirection
@@ -363,7 +320,7 @@ fn parse_events<'a>(
             //     {
             //         let signal = vcd.all_signals.get(*signal_idx).unwrap();
             //         match signal {
-            //         Signal::Data {..} => {signal_idx.clone()}
+            //         Signal::Data {..} => {*signal_idx}
             //         Signal::Alias {name, signal_alias} => {
             //                 let Signal_Idx(ref signal_idx) = signal_alias;
             //                 signal_idx.clone()
@@ -377,10 +334,34 @@ fn parse_events<'a>(
             //     let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
             //     match signal {
             //         Signal::Data {name, sig_type, num_bits, 
-            //         self_idx, timeline, scope_parent} => {
-            //             let value = 1.to_bigint().unwrap();
-            //             let pair = (TimeStamp(vcd.cursor.clone()), Sig_Value::Numeric(value));
-            //             timeline.push(pair);
+            //         self_idx, timeline, timeline_markers, scope_parent} => {
+            //             // get bitwidth, while accounting for the error case when
+            //             // numbits is None
+            //             let num_bits = {
+            //                 let (f, l) = (file!(), line!());
+            //                 let msg = format!("\
+            //                     Error near {f}:{l}. The bitwidth for signal {name} \
+            //                     must be specified for a signal of type {sig_type:?}. \
+            //                     This error occurred while parsing the vcd file at \
+            //                     {cursor:?}");
+            //                 num_bits.as_ref().ok_or(msg)?
+            //             };
+
+            //             let (f, l )= (file!(), line!());
+            //             let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
+            //                 |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+            //             let timeline_idx = TimelineIdx(timeline_idx);
+
+            //             let (f, l )= (file!(), line!());
+            //             let start_idx = u32::try_from(timeline.len()).map_err(
+            //                 |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+            //             let start_idx    = StartIdx(start_idx);
+            //             let pair = (timeline_idx, start_idx);
+            //             // timeline_markers.push(pair);
+            //             // timeline.append(&mut [0u8, 1u8, 2u8]);
+            //             timeline.push(0u8);
+            //             timeline.push(1u8);
+            //             timeline.push(2u8);
             //             Ok(())
             //         }
             //         Signal::Alias {..} => {
@@ -410,12 +391,12 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
 
     // after we parse metadata, we form VCD object
     let mut vcd = VCD{
-        metadata   : header,
-        cursor     : Value::u8(0),
-        timeline   : vec![],
-        all_signals: vec![],
-        all_scopes : vec![],
-        scope_roots: vec![],
+        metadata           : header,
+        timeline           : vec![],
+        timeline_markers   : vec![],
+        all_signals        : vec![],
+        all_scopes         : vec![],
+        scope_roots        : vec![],
     };
 
     // The last word parse_metadata saw determines how we proceed.
@@ -423,7 +404,7 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
     // parsing scoped vars.
     let (f, l ) = (file!(), line!());
     let msg = format!("Error near {f}:{l}. Current word empty!");
-    let (word, cursor) = word_gen.curr_word().expect(msg.as_str());
+    let (word, cursor) = word_gen.curr_word().ok_or(msg.as_str())?;
     match word {
         "$scope" => {
             parse_scopes(&mut word_gen, None, &mut vcd, &mut signal_map)
@@ -441,7 +422,6 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
 
     }?;
     parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
-    dbg!(&vcd.cursor);
 
     Ok(vcd)
 }
