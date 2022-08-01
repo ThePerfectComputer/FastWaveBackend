@@ -2,6 +2,10 @@ Copyright - Yehowshua Immanuel
 
 # A High performance, VCD Parser written in Rust
 
+x/z value parsing currently fails in ``cargo test``.
+
+A fix is coming.
+
 ## Current Features
  - pretty fast, parses 3.04 GB VCD file in ~62s on M1 Macbook Air.
 
