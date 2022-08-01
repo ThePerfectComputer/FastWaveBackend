@@ -2,12 +2,10 @@ Copyright - Yehowshua Immanuel
 
 # A High performance, VCD Parser written in Rust
 
-x/z value parsing currently fails in ``cargo test``.
-
-A fix is coming.
-
 ## Current Features
- - pretty fast, parses 3.04 GB VCD file in ~62s on M1 Macbook Air.
+ - pretty fast, parses 3.04 GB VCD file in ~67s on M1 Macbook Air with 
+   respect to 50s with GTKWave on the same device. FastWave currently
+   offers highly robust error handling which GTKWave doesn't have.
 
 
 # Current Limitations
@@ -29,9 +27,7 @@ You can run all the tests with ``cargo test``
 # TODO
 
 ## Features
- - [ ] handle signals with x or z as string
-       - the one bit parsers may also need to handle string
- - move parse_orphaned_vars to scopes.rs
+ - [ ] move parse_orphaned_vars to scopes.rs
  - [ ] Print out git commit or release number.
  - [ ] Should be able to load waveform whilst viewing it live.
        - could be quite challenging to implement for various reasons

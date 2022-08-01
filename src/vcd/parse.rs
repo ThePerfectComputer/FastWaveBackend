@@ -1,5 +1,6 @@
 use std::{fs::File};
 use std::collections::HashMap;
+use num::BigInt;
 
 use super::*;
 
@@ -19,7 +20,10 @@ use std::num::{IntErrorKind, ParseIntError};
 
 use function_name::named;
 
-fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, String> {
+#[derive(Debug)]
+enum BinaryParserErrTypes {x_value, z_value, u_value, other_value(char), too_long}
+
+fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, BinaryParserErrTypes> {
     let mut vec_u8 : Vec<u8> = Vec::new();
     let mut binary_str_as_bytes = binary_str.as_bytes();
 
@@ -54,7 +58,7 @@ fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, String> {
     Ok(vec_u8)
 }
 
-fn base2_str_to_byte(word : &[u8]) -> Result<u8, String> {
+fn base2_str_to_byte(word : &[u8]) -> Result<u8, BinaryParserErrTypes> {
     let mut val = 0u8;
 
     // shouldn't have more than 8 chars in str
@@ -63,7 +67,7 @@ fn base2_str_to_byte(word : &[u8]) -> Result<u8, String> {
         let (f, l )= (file!(), line!());
         let err = format!(
             "Error near {f}:{l}. Base2 string has length {len} > 8.");
-        return Err(err)
+        return Err(BinaryParserErrTypes::too_long)
     }
 
     let bit_lut = [
@@ -81,13 +85,10 @@ fn base2_str_to_byte(word : &[u8]) -> Result<u8, String> {
         match chr {
             b'1' => {val = bit_lut[idx] | val}
             b'0' => {}
-            _ => {
-                let chr = *chr as char;
-                let (f, l )= (file!(), line!());
-                let err = format!(
-                    "Error near {f}:{l}. Expected 1 or 0 in base2 string but got {chr}");
-                return Err(err)
-            }
+            b'x' | b'X' => {return Err(BinaryParserErrTypes::x_value)}
+            b'z' | b'Z' => {return Err(BinaryParserErrTypes::z_value)}
+            b'u' | b'U' => {return Err(BinaryParserErrTypes::u_value)}
+            _    => {return Err(BinaryParserErrTypes::other_value(*chr as char))}
         }
 
     }
@@ -191,9 +192,9 @@ fn parse_events<'a>(
             "#" => {
                 let value = &word[1..];
                 let (f, l )= (file!(), line!());
-                let mut value = binary_str_to_vec_u8(value).map_err(
-                    |e| format!("Error near {f}:{l}. Failed to parse {value} as \
-                    at {cursor:?} with error {e}"))?;
+                let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
+                    format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}").as_str())?;
+                let (_, mut value) = value.to_bytes_le();
                     // TODO : u32 helps with less memory, but should ideally likely be
                     // configurable.
                 let (f, l )= (file!(), line!());
@@ -201,6 +202,125 @@ fn parse_events<'a>(
                     |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                 vcd.timeline_markers.push(StartIdx(start_idx));
                 vcd.timeline.append(&mut value);
+            }
+            // handle the case of an n bit signal whose value must be parsed
+            "b" => {
+                let binary_value = &word[1..];
+                let observed_num_bits = binary_value.len();
+                let (f, l )= (file!(), line!());
+
+                let mut value_u8 : Vec<u8> = Vec::new();
+                let mut value_string = String::new();
+                
+                let mut store_as_string = false;
+
+                // If we encounter x or z in a value, we can recover from
+                // the error and store the value as a string.
+                // Or else, we we propagate up other errors.
+                match binary_str_to_vec_u8(binary_value) {
+                    Ok(result) => {value_u8 = result;}
+                    Err(BinaryParserErrTypes::x_value | 
+                        BinaryParserErrTypes::z_value |
+                        BinaryParserErrTypes::u_value
+                    ) => 
+                        {
+                            store_as_string = true;
+                            value_string    = binary_value.to_string();
+                        }
+                    Err(e) => {
+                        let (f, l )= (file!(), line!());
+                        Err(e).map_err(
+                            |e| format!("Error near {f}:{l}. Error {e:?} at {cursor:?}."))?;
+                    }
+                }
+                
+                // this word should be the signal alias
+                let (word, cursor) = word_reader.next_word().unwrap();
+
+                // lookup signal idx
+                let (f, l )= (file!(), line!());
+                let Signal_Idx(ref signal_idx) = signal_map.get(word).ok_or(
+                    format!("Error near {f}:{l}. Failed to lookup signal {word} at {cursor:?}"))?;
+
+                // account for fact that signal idx could be an alias, so there
+                // could be one step of indirection
+                let signal_idx = 
+                {
+                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                    match signal {
+                    Signal::Data {..} => {*signal_idx}
+                    Signal::Alias {name, signal_alias} => {
+                            let Signal_Idx(ref signal_idx) = signal_alias;
+                            signal_idx.clone()
+
+                        }
+                    }
+                };
+
+                // after handling potential indirection, go ahead and update the timeline
+                // of the signal signal_idx references
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                match signal {
+                    Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
+                    self_idx, u8_timeline, u8_timeline_markers, string_timeline,
+                    string_timeline_markers, ..} => {
+
+                        if signal_error.is_some() {continue;}
+
+                        // Get the observed number of bits for the value parsed earlier
+                        // and verify that it is not greater than the numbits declared
+                        // when the signal was declared.
+                        // Also account for the error case of a bitwidth of `None`
+                        match num_bits {
+                            Some(ref num_bits) => {
+                                if *num_bits > observed_num_bits {
+                                    let (f, l) = (file!(), line!());
+                                    let msg = format!("\
+                                        Error near {f}:{l}. The bitwidth for signal {name} \
+                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        `{num_bits}`. \
+                                        This error occurred while parsing the vcd file at \
+                                        {cursor:?}");
+                                    *signal_error = Some(msg);
+                                    continue;
+                                }
+                            }
+                            None => {
+                                let (f, l) = (file!(), line!());
+                                let msg = format!("\
+                                    Error near {f}:{l}. The bitwidth for signal {name} \
+                                    must be specified for a signal of type {sig_type:?}. \
+                                    This error occurred while parsing the vcd file at \
+                                    {cursor:?}");
+                                Err(msg)?;
+                            }
+                        };
+
+                        let (f, l )= (file!(), line!());
+                        let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let timeline_idx = TimelineIdx(timeline_idx);
+
+                        if store_as_string {
+                            string_timeline_markers.push(timeline_idx);
+                            string_timeline.push(value_string);
+                            Ok(())
+
+                        }
+                        else {
+                            u8_timeline_markers.push(timeline_idx);
+                            u8_timeline.append(&mut value_u8);
+                            Ok(())
+                        }
+                    }
+                    Signal::Alias {..} => {
+                        let (f, l )= (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                                This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
             }
 
             // handle the case of a one bit signal whose value is set to `0`
@@ -282,7 +402,86 @@ fn parse_events<'a>(
                 }?;
             }
 
-            // handle the case of a one bit signal whose value is set to `1`
+            // other one bit cases
+            "x" | "X" | "z" | "Z" | "u" | "U" => {
+                let val = word.to_string();
+                // lokup signal idx
+                let hash = &word[1..];
+                let (f, l )= (file!(), line!());
+                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                    format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}"))?;
+
+                // account for fact that signal idx could be an alias, so there
+                // could be one step of indirection
+                let signal_idx = 
+                {
+                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
+                    match signal {
+                    Signal::Data {..} => {*signal_idx}
+                    Signal::Alias {name, signal_alias} => {
+                            let Signal_Idx(ref signal_idx) = signal_alias;
+                            signal_idx.clone()
+
+                        }
+                    }
+                };
+
+                // after handling potential indirection, go ahead and update the timeline
+                // of the signal signal_idx references
+                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
+                match signal {
+                    Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
+                    self_idx, u8_timeline, u8_timeline_markers, string_timeline,
+                    string_timeline_markers, ..} => {
+
+                        // if this is a bad signal, go ahead and skip it
+                        if signal_error.is_some() {continue;}
+
+                        // Get bitwidth and verify that it is 1.
+                        // Also account for the error case of a bitwidth of `None`
+                        match num_bits {
+                            Some(ref num_bits) => {
+                                if *num_bits != 1 {
+                                    let (f, l) = (file!(), line!());
+                                    let msg = format!("\
+                                        Error near {f}:{l}. The bitwidth for signal {name} \
+                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        `{num_bits}`. \
+                                        This error occurred while parsing the vcd file at \
+                                        {cursor:?}");
+                                    *signal_error = Some(msg);
+                                    continue;
+                                }
+                            }
+                            None => {
+                                let (f, l) = (file!(), line!());
+                                let msg = format!("\
+                                    Error near {f}:{l}. The bitwidth for signal {name} \
+                                    must be specified for a signal of type {sig_type:?}. \
+                                    This error occurred while parsing the vcd file at \
+                                    {cursor:?}");
+                                Err(msg)?;
+                            }
+                        };
+
+                        let (f, l )= (file!(), line!());
+                        let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
+                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                        let timeline_idx = TimelineIdx(timeline_idx);
+
+                        string_timeline_markers.push(timeline_idx);
+                        string_timeline.push(val);
+                        Ok(())
+                    }
+                    Signal::Alias {..} => {
+                        let (f, l )= (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                             This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
+            }
             "1" => {
                 // lokup signal idx
                 let hash = &word[1..];
@@ -361,95 +560,6 @@ fn parse_events<'a>(
                 }?;
             }
 
-            // handle the case of an n bit signal whose value must be parse
-            "b" => {
-                let binary_value = &word[1..];
-                let observed_num_bits = binary_value.len();
-                let (f, l )= (file!(), line!());
-                let mut value = binary_str_to_vec_u8(binary_value).map_err(
-                    |e| format!("Error near {f}:{l}. Failed to parse {binary_value} as \
-                    at {cursor:?} with error {e}"))?;
-                
-                // this word should be the signal alias
-                let (word, cursor) = word_reader.next_word().unwrap();
-
-                // lookup signal idx
-                let (f, l )= (file!(), line!());
-                let Signal_Idx(ref signal_idx) = signal_map.get(word).ok_or(
-                    format!("Error near {f}:{l}. Failed to lookup signal {word} at {cursor:?}"))?;
-
-                // account for fact that signal idx could be an alias, so there
-                // could be one step of indirection
-                let signal_idx = 
-                {
-                    let signal = vcd.all_signals.get(*signal_idx).unwrap();
-                    match signal {
-                    Signal::Data {..} => {*signal_idx}
-                    Signal::Alias {name, signal_alias} => {
-                            let Signal_Idx(ref signal_idx) = signal_alias;
-                            signal_idx.clone()
-
-                        }
-                    }
-                };
-
-                // after handling potential indirection, go ahead and update the timeline
-                // of the signal signal_idx references
-                let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
-                match signal {
-                    Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
-                    self_idx, u8_timeline, u8_timeline_markers, scope_parent, ..} => {
-
-                        if signal_error.is_some() {continue;}
-
-                        // Get the observed number of bits for the value parsed earlier
-                        // and verify that it is not greater than the numbits declared
-                        // when the signal was declared.
-                        // Also account for the error case of a bitwidth of `None`
-                        match num_bits {
-                            Some(ref num_bits) => {
-                                if *num_bits > observed_num_bits {
-                                    let (f, l) = (file!(), line!());
-                                    let msg = format!("\
-                                        Error near {f}:{l}. The bitwidth for signal {name} \
-                                        of sig_type {sig_type:?} is expected to be `1` not \
-                                        `{num_bits}`. \
-                                        This error occurred while parsing the vcd file at \
-                                        {cursor:?}");
-                                        println!("Encountered bad signal {name}.");
-                                    *signal_error = Some(msg);
-                                    continue;
-                                }
-                            }
-                            None => {
-                                let (f, l) = (file!(), line!());
-                                let msg = format!("\
-                                    Error near {f}:{l}. The bitwidth for signal {name} \
-                                    must be specified for a signal of type {sig_type:?}. \
-                                    This error occurred while parsing the vcd file at \
-                                    {cursor:?}");
-                                Err(msg)?;
-                            }
-                        };
-
-                        let (f, l )= (file!(), line!());
-                        let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
-                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
-                        let timeline_idx = TimelineIdx(timeline_idx);
-
-                        u8_timeline_markers.push(timeline_idx);
-                        u8_timeline.append(&mut value);
-                        Ok(())
-                    }
-                    Signal::Alias {..} => {
-                        let (f, l )= (file!(), line!());
-                        let msg = format!(
-                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
-                                This error occurred while parsing vcd file at {cursor:?}");
-                        Err(msg)
-                    }
-                }?;
-            }
             _ => {}
         }
     }

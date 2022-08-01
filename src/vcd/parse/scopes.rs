@@ -40,7 +40,8 @@ pub(super) fn parse_var<'a>(
     let no_bits = match var_type {
         Sig_Type::Integer | Sig_Type::Parameter |
         Sig_Type::Real    | Sig_Type::Reg       |
-        Sig_Type::Wire    | Sig_Type::Tri1 => {
+        Sig_Type::Wire    | Sig_Type::Tri1      |
+        Sig_Type::Time => {
             let no_bits = word.parse::<usize>().expect(parse_err.as_str());
             Some(no_bits)
         }
