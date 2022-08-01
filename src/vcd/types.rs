@@ -1,7 +1,4 @@
-use core::time;
-use std::collections::{BTreeMap, HashMap};
 use chrono::prelude::*;
-use num::BigInt;
 
 #[derive(Debug)]
 pub(super) struct Version(pub String);
@@ -31,45 +28,24 @@ pub struct StartIdx(pub(super) u32);
 pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
 #[derive(Debug)]
-pub(super) enum TimeStamp {
-    u8(u8), 
-    u16(u16),
-    u32(u32),
-    u64(u64),
-    BigInt(BigInt),
-}
-
-#[derive(Debug, Clone)]
-pub(super) enum Value {
-    u8(u8), 
-    u16(u16),
-    u32(u32),
-    u64(u64),
-    BigInt(BigInt),
-}
-
-pub type BigNum = Vec<u8>;
-
-#[derive(Debug)]
-pub(super) enum Sig_Value {
-    Numeric(u64),
-    NonNumeric(String)}
-
-#[derive(Debug)]
 pub(super) enum Signal{
     Data{
          name             : String,
          sig_type         : Sig_Type,
          // I've seen a 0 bit signal parameter in a xilinx
-         // simulation before that gets assigne 1 bit values.
+         // simulation before that gets assigned 1 bit values.
          // I consider this to be bad behavior. We capture such
          // errors in the following type.
          signal_error     : Option<String>,
          num_bits         : Option<usize>,
          // TODO : may be able to remove self_idx
          self_idx         : Signal_Idx,
-         timeline         : Vec<u8>,
-         timeline_markers : Vec<(TimelineIdx)>,
+         // we could encounter a mix of pure values and strings
+         // for the same signal timeline
+         u8_timeline             : Vec<u8>,
+         u8_timeline_markers     : Vec<(TimelineIdx)>,
+         string_timeline         : Vec<String>,
+         string_timeline_markers : Vec<(TimelineIdx)>,
          scope_parent : Scope_Idx},
     Alias{
          name         : String,
@@ -81,7 +57,6 @@ pub(super) struct Scope {
     pub(super) name          : String,
 
     pub(super) parent_idx    : Option<Scope_Idx>,
-    // TODO : may be able to remove self_idx
     pub(super) self_idx      : Scope_Idx,
 
     pub(super) child_signals : Vec<Signal_Idx>,
@@ -127,11 +102,9 @@ impl VCD {
         println!();
 
         for scope_idx in &root_scope.child_scopes {
-            // let Scope_Idx(ref scope_idx_usize) = scope_idx;
-            // let child_scope = &all_scopes[*scope_idx_usize];
             self.print_scope_tree(*scope_idx, depth+1);
         }
-        // let root = vcd.all_scopes;
+
     }
 
     pub fn print_scopes(&self) {
@@ -139,24 +112,6 @@ impl VCD {
             self.print_scope_tree(*scope_root, 0);
         }
     }
-
-    // pub fn average_len(&self) -> f64{
-    //     let mut total_lens = 0.0;
-    //     for el in &self.timeline {
-    //         total_lens += el.len() as f64;
-    //     }
-
-    //     return total_lens/(self.timeline.len() as f64);
-    // }
-
-    // pub fn total_len(&self) -> usize{
-    //     let mut total_lens = 0usize;
-    //     for el in &self.timeline {
-    //         total_lens += el.len();
-    //     }
-
-    //     return total_lens;
-    // }
 
     pub fn print_longest_signal(&self) {
         let mut idx = 0usize;
@@ -171,10 +126,10 @@ impl VCD {
                     sig_type, 
                     num_bits, 
                     self_idx, 
-                    timeline, 
+                    u8_timeline, 
                     .. } => {
-                        if timeline.len() > max_len {
-                            max_len = timeline.len();
+                        if u8_timeline.len() > max_len {
+                            max_len = u8_timeline.len();
                             let Signal_Idx(idx_usize) = self_idx;
                             idx = *idx_usize;
                             signal_name = name.clone();

@@ -86,8 +86,10 @@ pub(super) fn parse_var<'a>(
                 signal_error: None,
                 num_bits: no_bits,
                 self_idx: signal_idx,
-                timeline: vec![],
-                timeline_markers: vec![],
+                u8_timeline: vec![],
+                u8_timeline_markers: vec![],
+                string_timeline: vec![],
+                string_timeline_markers: vec![],
                 scope_parent: parent_scope_idx };
             (signal, signal_idx)
         }
@@ -161,7 +163,7 @@ pub(super) fn parse_signal_tree<'a>(
         let (word, cursor) = word_reader.next_word().ok_or(&err)?;
         let ParseResult{matched, residual} = tag(word, "$");
         match matched {
-            // we hope that this word stars with a `$`
+            // we hope that this word starts with a `$`
             "$" =>  {
                 match residual {
                     "scope" => {
