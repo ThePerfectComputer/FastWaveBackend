@@ -1,43 +1,48 @@
-# The Beginnings of a high-performance, low memory footprint VCD Viewer in Rust for massive multi-GB waveforms
+Copyright - Yehowshua Immanuel
 
-## Features
- - very fast
- - loads 200MB of VCD waveform per second on an 8 core 2017 desktop CPU with NVMe storage
- - consumes roughly between 10 - 50MB of memory per GB of waveform
- - elegant/pretty UI
- - can be easily ported to work in browser via webassembly
- - allows high-performance custom Rust plugins to manipulate and
-   generate new waveforms live
+# A High performance, VCD Parser written in Rust
+
+## Current Features
+ - pretty fast, parses 3.04 GB VCD file in ~67s on M1 Macbook Air with 
+   respect to 50s with GTKWave on the same device. FastWave currently
+   offers highly robust error handling which GTKWave doesn't have.
+
+
+# Current Limitations
+Unable to handle VCD files that have signals with more than 
+2^32 - 1 = 4,294,967,295 deltas/changes.
 
 ## Running
 
-Make sure you have a test vcd file to get you started. You can grab
-a large VCD file from
+This repository comes with several smaller VCD files emitted from
+various EDA tools. If you want a larger VCD file, grab one from
 [here](https://drive.google.com/file/d/1pfm2qo2l8fGTHHJ8TLrg1vSGaV_TUbp2/view?usp=sharing).
 
 The first build of the program may take some time.
 
-``cargo  run --release -- path/to/vcd/file``
+``cargo run --release test-vcd-files/aldec/SPI_Write.vcd``
 
-## TODO
- - [x] Test positions with seeking
- - [x] vcd should be argument
- - [x] structure to store stream position against timestamp as string
- - [x] structure to store stream position against timestamp as BigInt
+You can run all the tests with ``cargo test``
 
-### April 14
- - [ ] store timestamps to struct
- - [ ] Get file loading status
- - [ ] Get all signal scopes
+# TODO
 
-### April 15
- - [ ] Re-factor to support hooks in the initial file ingest
- - [ ] Modularize
+## Features
+ - [ ] move parse_orphaned_vars to scopes.rs
+ - [ ] Print out git commit or release number.
+ - [ ] Should be able to load waveform whilst viewing it live.
+       - could be quite challenging to implement for various reasons
+ - [ ] Take a look at GTKWave parser to compare efficiency.
+ - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
+       - support multithreaded re-ordering
 
-### April 15
- - [ ] Build tree per signal.
- - [ ] Each signal also comes with a value change buffer to
-       avoid frequent disk readouts.
+## Repairs
+ - [ ] make a custom date parser for possibly up to 18 different versions(that is, for each possible tool).
+ - [ ] Consolidate error messages and add cursors throughout.
+ - [ ] Fix warnings especially usage and restriction warnings once I'm
+       able to successfully parse all sample VCDs.
 
-# VCD Spec Questions
-- [ ] I'm pretty sure that only one statement per line is allowed.
+## Code Consistency
+ - [ ] Change error messages to line and filenames. Go through all calls to ``format!`` whilst also keeping performance in mind.
+
+## Marketing
+ - [ ] Send survey to community channel.
