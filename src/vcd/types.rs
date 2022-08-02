@@ -4,7 +4,7 @@ use chrono::prelude::*;
 pub(super) struct Version(pub String);
 
 #[derive(Debug)]
-pub(super) enum Timescale {fs, ps, ns, us, ms, s, unit}
+pub(super) enum Timescale {Fs, Ps, Ns, Us, Ms, S, Unit}
 
 #[derive(Debug)]
 pub(super) struct Metadata {
@@ -13,10 +13,10 @@ pub(super) struct Metadata {
     pub(super) timescale : (Option<u32>, Timescale)}
 
 #[derive(Debug, Copy, Clone)]
-pub(super) struct Scope_Idx(pub(super) usize);
+pub(super) struct ScopeIdx(pub(super) usize);
 
 #[derive(Debug, Copy, Clone)]
-pub(super) struct Signal_Idx(pub(super) usize);
+pub(super) struct SignalIdx(pub(super) usize);
 
 #[derive(Debug, Copy, Clone)]
 pub(super) struct TimelineIdx(pub(super) u32);
@@ -25,13 +25,13 @@ pub(super) struct TimelineIdx(pub(super) u32);
 pub struct StartIdx(pub(super) u32);
 
 #[derive(Debug)]
-pub(super) enum Sig_Type {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
+pub(super) enum SigType {Integer, Parameter, Real, Reg, Str, Wire, Tri1, Time}
 
 #[derive(Debug)]
 pub(super) enum Signal{
     Data{
          name             : String,
-         sig_type         : Sig_Type,
+         sig_type         : SigType,
          // I've seen a 0 bit signal parameter in a xilinx
          // simulation before that gets assigned 1 bit values.
          // I consider this to be bad behavior. We capture such
@@ -39,28 +39,28 @@ pub(super) enum Signal{
          signal_error     : Option<String>,
          num_bits         : Option<usize>,
          // TODO : may be able to remove self_idx
-         self_idx         : Signal_Idx,
+         self_idx         : SignalIdx,
          // we could encounter a mix of pure values and strings
          // for the same signal timeline
          u8_timeline             : Vec<u8>,
-         u8_timeline_markers     : Vec<(TimelineIdx)>,
+         u8_timeline_markers     : Vec<TimelineIdx>,
          string_timeline         : Vec<String>,
-         string_timeline_markers : Vec<(TimelineIdx)>,
-         scope_parent : Scope_Idx},
+         string_timeline_markers : Vec<TimelineIdx>,
+         scope_parent : ScopeIdx},
     Alias{
          name         : String,
-         signal_alias : Signal_Idx}
+         signal_alias : SignalIdx}
 }
 
 #[derive(Debug)]
 pub(super) struct Scope {
     pub(super) name          : String,
 
-    pub(super) parent_idx    : Option<Scope_Idx>,
-    pub(super) self_idx      : Scope_Idx,
+    pub(super) parent_idx    : Option<ScopeIdx>,
+    pub(super) self_idx      : ScopeIdx,
 
-    pub(super) child_signals : Vec<Signal_Idx>,
-    pub(super) child_scopes  : Vec<Scope_Idx>}
+    pub(super) child_signals : Vec<SignalIdx>,
+    pub(super) child_scopes  : Vec<ScopeIdx>}
 
 
 // TODO: document how timeline is represented
@@ -71,27 +71,27 @@ pub struct VCD {
     pub timeline_markers   : Vec<StartIdx>,
     pub(super) all_signals : Vec<Signal>,
     pub(super) all_scopes  : Vec<Scope>,
-    pub(super) scope_roots : Vec<Scope_Idx>}
+    pub(super) scope_roots : Vec<ScopeIdx>}
 
 impl VCD {
     // TODO : make this a generic traversal function that applies specified 
     // functions upon encountering scopes and signals
     fn print_scope_tree(
         &self,
-        root_scope_idx : Scope_Idx,
+        root_scope_idx : ScopeIdx,
         depth : usize)
     {
         let all_scopes  = &self.all_scopes;
         let all_signals = &self.all_signals;
 
         let indent = " ".repeat(depth * 4);
-        let Scope_Idx(root_scope_idx) = root_scope_idx;
+        let ScopeIdx(root_scope_idx) = root_scope_idx;
         let root_scope = &all_scopes[root_scope_idx];
         let root_scope_name = &root_scope.name;
 
         println!("{indent}scope: {root_scope_name}");
 
-        for Signal_Idx(ref signal_idx) in &root_scope.child_signals {
+        for SignalIdx(ref signal_idx) in &root_scope.child_signals {
             let child_signal = &all_signals[*signal_idx];
             let name = match child_signal {
                 Signal::Data{name, ..} => {name}
@@ -123,14 +123,12 @@ impl VCD {
                 Signal::Alias {..} => {}
                 Signal::Data { 
                     name, 
-                    sig_type, 
-                    num_bits, 
                     self_idx, 
                     u8_timeline, 
                     .. } => {
                         if u8_timeline.len() > max_len {
                             max_len = u8_timeline.len();
-                            let Signal_Idx(idx_usize) = self_idx;
+                            let SignalIdx(idx_usize) = self_idx;
                             idx = *idx_usize;
                             signal_name = name.clone();
                         }

@@ -1,6 +1,5 @@
 use chrono::prelude::*;
 use itertools::Itertools;
-use std::fs::File;
 use function_name::named;
 
 use super::*;
@@ -120,7 +119,7 @@ pub(super) fn parse_date(
 
     let year = {
         // check for another word in the file
-        let (word, cursor) = word_and_ctx5;
+        let (word, _) = word_and_ctx5;
         word.to_string()
     };
 
@@ -148,7 +147,7 @@ pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, St
             return Err(format!("reached end of file without parser leaving {}", function_name!()))
         }
 
-        let (word, cursor) = word.unwrap();
+        let (word, _) = word.unwrap();
 
         if word == "$end" {
             // truncate trailing whitespace
@@ -170,7 +169,7 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
     // we might see `scalarunit $end` or `scalar unit $end`
 
     // first get timescale
-    let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+    let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
     let word = word.to_string();
     let ParseResult{matched, residual} = take_while(word.as_str(), digit);
     let scalar = matched;
@@ -180,14 +179,14 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
 
     let timescale = {
         if residual == "" {
-            let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+            let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
             let unit = match word {
-                "fs" => {Ok(Timescale::fs)}
-                "ps" => {Ok(Timescale::ps)}
-                "ns" => {Ok(Timescale::ns)}
-                "us" => {Ok(Timescale::us)}
-                "ms" => {Ok(Timescale::ms)}
-                "s"  => {Ok(Timescale::s)}
+                "fs" => {Ok(Timescale::Fs)}
+                "ps" => {Ok(Timescale::Ps)}
+                "ns" => {Ok(Timescale::Ns)}
+                "us" => {Ok(Timescale::Us)}
+                "ms" => {Ok(Timescale::Ms)}
+                "s"  => {Ok(Timescale::S)}
                 _    => {Err(err_msg.to_string())}
             }.unwrap();
         
@@ -195,11 +194,11 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
         }
         else {
             let unit = match residual {
-                "ps" => {Ok(Timescale::ps)}
-                "ns" => {Ok(Timescale::ns)}
-                "us" => {Ok(Timescale::us)}
-                "ms" => {Ok(Timescale::ms)}
-                "s"  => {Ok(Timescale::s)}
+                "ps" => {Ok(Timescale::Ps)}
+                "ns" => {Ok(Timescale::Ns)}
+                "us" => {Ok(Timescale::Us)}
+                "ms" => {Ok(Timescale::Ms)}
+                "s"  => {Ok(Timescale::S)}
                 _    => {Err(err_msg.to_string())}
             }.unwrap();
         
@@ -208,12 +207,11 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
     };
 
     // then check for the `$end` keyword
-    let (end, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+    let (end, _) = word_reader.next_word().ok_or(&err_msg)?;
     tag(end, "$end").assert_match()?;
 
     return Ok(timescale);
 
-    Err("".to_string())
 }
 
 #[named]
@@ -223,12 +221,12 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
     let mut metadata = Metadata {
         date : None,
         version : None,
-        timescale : (None, Timescale::unit)
+        timescale : (None, Timescale::Unit)
     };
 
     loop {
         // check for another word in the file
-        let (word, cursor) = word_reader.next_word().ok_or(&err_msg)?;
+        let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
 
         let ParseResult{matched, residual} = tag(word, "$");
         match matched {
@@ -254,7 +252,7 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
                         let mut found_end = false;
                         let mut lookahead_5_words : Vec<(String, Cursor)> = Vec::new();
 
-                        for word in 0..5 {
+                        for _ in 0..5 {
                             let (word, cursor) = word_reader.next_word().expect(err_msg.as_str());
                             let word = word.to_string();
                             match word.as_str() {

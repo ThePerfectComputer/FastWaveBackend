@@ -2,7 +2,6 @@ use std::{fs::File};
 use clap::Parser;
 
 pub mod test;
-use test::*;
 
 pub mod vcd;
 use vcd::parse_vcd;

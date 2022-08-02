@@ -7,9 +7,9 @@ use super::*;
 #[named]
 pub(super) fn parse_var<'a>(
     word_reader      : &mut WordReader,
-    parent_scope_idx : Scope_Idx,
+    parent_scope_idx : ScopeIdx,
     vcd              : &'a mut VCD,
-    signal_map       : &mut HashMap<String, Signal_Idx>
+    signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
     let err = format!("reached end of file without parser leaving {}", function_name!());
     let (word, cursor) = word_reader.next_word().ok_or(&err)?;
@@ -18,14 +18,14 @@ pub(super) fn parse_var<'a>(
     // $var parameter 3 a IDLE $end
     //      ^^^^^^^^^ - var_type
     let var_type = match word {
-        "integer"    => {Ok(Sig_Type::Integer)}
-        "parameter"  => {Ok(Sig_Type::Parameter)}
-        "real"       => {Ok(Sig_Type::Real)}
-        "reg"        => {Ok(Sig_Type::Reg)}
-        "string"     => {Ok(Sig_Type::Str)}
-        "wire"       => {Ok(Sig_Type::Wire)}
-        "tri1"       => {Ok(Sig_Type::Tri1)}
-        "time"       => {Ok(Sig_Type::Time)}
+        "integer"    => {Ok(SigType::Integer)}
+        "parameter"  => {Ok(SigType::Parameter)}
+        "real"       => {Ok(SigType::Real)}
+        "reg"        => {Ok(SigType::Reg)}
+        "string"     => {Ok(SigType::Str)}
+        "wire"       => {Ok(SigType::Wire)}
+        "tri1"       => {Ok(SigType::Tri1)}
+        "time"       => {Ok(SigType::Time)}
         _ => {
             let err = format!("found keyword `{word}` but expected one of {expected_types:?} on {cursor:?}");
             Err(err)
@@ -38,10 +38,10 @@ pub(super) fn parse_var<'a>(
     // $var parameter 3 a IDLE $end
     //                ^ - no_bits
     let no_bits = match var_type {
-        Sig_Type::Integer | Sig_Type::Parameter |
-        Sig_Type::Real    | Sig_Type::Reg       |
-        Sig_Type::Wire    | Sig_Type::Tri1      |
-        Sig_Type::Time => {
+        SigType::Integer | SigType::Parameter |
+        SigType::Real    | SigType::Reg       |
+        SigType::Wire    | SigType::Tri1      |
+        SigType::Time => {
             let no_bits = word.parse::<usize>().expect(parse_err.as_str());
             Some(no_bits)
         }
@@ -51,7 +51,7 @@ pub(super) fn parse_var<'a>(
 
     // $var parameter 3 a IDLE $end
     //                  ^ - signal_alias
-    let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+    let (word, _) = word_reader.next_word().ok_or(&err)?;
     let signal_alias = word.to_string();
     // dbg!(&signal_alias);
 
@@ -59,7 +59,7 @@ pub(super) fn parse_var<'a>(
     //                    ^^^^ - full_signal_name(can extend until $end)
     let mut full_signal_name = Vec::<String>::new();
     loop {
-        let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+        let (word, _) = word_reader.next_word().ok_or(&err)?;
         match word {
             "$end" => {break}
             _      => {full_signal_name.push(word.to_string())}
@@ -72,14 +72,14 @@ pub(super) fn parse_var<'a>(
     // map
     let (signal, signal_idx) = match signal_map.get(&signal_alias) {
         Some(ref_signal_idx) => {
-            let signal_idx = Signal_Idx(vcd.all_signals.len());
+            let signal_idx = SignalIdx(vcd.all_signals.len());
             let signal = Signal::Alias{
                 name: full_signal_name,
                 signal_alias: *ref_signal_idx};
             (signal, signal_idx)
         }
         None => {
-            let signal_idx = Signal_Idx(vcd.all_signals.len());
+            let signal_idx = SignalIdx(vcd.all_signals.len());
             signal_map.insert(signal_alias.to_string(), signal_idx);
             let signal = Signal::Data{
                 name: full_signal_name,
@@ -97,7 +97,7 @@ pub(super) fn parse_var<'a>(
     };
 
     vcd.all_signals.push(signal);
-    let Scope_Idx(parent_scope_idx_usize) = parent_scope_idx;
+    let ScopeIdx(parent_scope_idx_usize) = parent_scope_idx;
     let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx_usize).unwrap();
     parent_scope.child_signals.push(signal_idx);
 
@@ -109,7 +109,7 @@ pub(super) fn parse_var<'a>(
 fn parse_orphaned_vars<'a>(
     word_reader      : &mut WordReader,
     vcd              : &'a mut VCD,
-    signal_map       : &mut HashMap<String, Signal_Idx>
+    signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
     // create scope for unscoped signals if such a scope does not
     // yet exist
@@ -118,7 +118,7 @@ fn parse_orphaned_vars<'a>(
     // set default scope_idx to the count of existing scope as we
     // generally set scope.self_idx to the number of existing scopes
     // when that particular scope was inserted
-    let mut scope_idx = Scope_Idx(vcd.all_scopes.len());
+    let mut scope_idx = ScopeIdx(vcd.all_scopes.len());
 
     // Override scope_idx if we find a scope named "Orphaned Signals"
     // already exists
@@ -181,9 +181,9 @@ fn parse_orphaned_vars<'a>(
 #[named]
 pub(super) fn parse_signal_tree<'a>(
     word_reader      : &mut WordReader,
-    parent_scope_idx : Option<Scope_Idx>,
+    parent_scope_idx : Option<ScopeIdx>,
     vcd              : &'a mut VCD,
-    signal_map       : &mut HashMap<String, Signal_Idx>
+    signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
 
     // $scope module reg_mag_i $end
@@ -203,13 +203,13 @@ pub(super) fn parse_signal_tree<'a>(
     //               ^^^^^^^^^ - scope name
     let (scope_name, _) = word_reader.next_word().ok_or(&err)?;
 
-    let curr_scope_idx = Scope_Idx(vcd.all_scopes.len());
+    let curr_scope_idx = ScopeIdx(vcd.all_scopes.len());
     
     // register this scope as a child of the current parent scope
     // if there is a parent scope, or else we register this scope as
     // root scope
     match parent_scope_idx {
-        Some(Scope_Idx(parent_scope_idx)) => {
+        Some(ScopeIdx(parent_scope_idx)) => {
             let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx).unwrap();
             parent_scope.child_scopes.push(curr_scope_idx);
         }
@@ -277,14 +277,13 @@ pub(super) fn parse_signal_tree<'a>(
 #[named]
 pub(super) fn parse_scopes<'a>(
     word_reader      : &mut WordReader,
-    parent_scope_idx : Option<Scope_Idx>,
     vcd              : &'a mut VCD,
-    signal_map       : &mut HashMap<String, Signal_Idx>
+    signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
     // get the current word
     let (f, l ) = (file!(), line!());
     let msg = format!("Error near {f}:{l}. Current word empty!");
-    let (word, cursor) = word_reader.curr_word().ok_or(msg)?;
+    let (word, _) = word_reader.curr_word().ok_or(msg)?;
 
     // we may have orphaned vars that occur before the first scope
     if word == "$var" {

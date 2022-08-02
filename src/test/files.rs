@@ -1,6 +1,6 @@
 // TODO: we should eventually be able to only test on just
 // the files const
-pub const files : [&str; 30] = [
+pub const FILES : [&str; 30] = [
     "./test-vcd-files/aldec/SPI_Write.vcd",
     "./test-vcd-files/ghdl/alu.vcd",
     "./test-vcd-files/ghdl/idea.vcd",
@@ -34,7 +34,7 @@ pub const files : [&str; 30] = [
     "./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd"
 ];
 
-pub const good_date_files : [&str; 24] = [
+pub const GOOD_DATE_FILES : [&str; 24] = [
     "./test-vcd-files/aldec/SPI_Write.vcd",
     "./test-vcd-files/ghdl/alu.vcd",
     "./test-vcd-files/ghdl/idea.vcd",
@@ -61,7 +61,7 @@ pub const good_date_files : [&str; 24] = [
     "./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd"
 ];
 
-pub const bad_date_files : [&str; 6] = [
+pub const BAD_DATE_FILES : [&str; 6] = [
     "./test-vcd-files/ncsim/ffdiv_32bit_tb.vcd",
     "./test-vcd-files/quartus/mipsHardware.vcd",
     "./test-vcd-files/quartus/wave_registradores.vcd",

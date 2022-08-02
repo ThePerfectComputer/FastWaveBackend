@@ -19,8 +19,6 @@ use scopes::*;
 mod events;
 use events::*;
 
-use function_name::named;
-
 pub fn parse_vcd(file : File) -> Result<VCD, String> {
     let mut word_gen = WordReader::new(file);
 
@@ -30,7 +28,7 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
     // respective signal indexes
     let mut signal_map = std::collections::HashMap::new();
 
-    // after we parse metadata, we form VCD object
+    // after we parse metadata, we form the VCD object
     let mut vcd = VCD{
         metadata           : header,
         timeline           : vec![],
@@ -40,7 +38,7 @@ pub fn parse_vcd(file : File) -> Result<VCD, String> {
         scope_roots        : vec![],
     };
 
-    parse_scopes(&mut word_gen, None, &mut vcd, &mut signal_map)?;
+    parse_scopes(&mut word_gen, &mut vcd, &mut signal_map)?;
     parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
 
     Ok(vcd)
@@ -56,7 +54,7 @@ mod tests {
         // TODO: eventually, once all dates pass, merge the following
         // two loops
         // testing dates
-        for file in test::good_date_files {
+        for file in test::GOOD_DATE_FILES {
             let metadata = parse_metadata(
                 &mut WordReader::new(
                     File::open(file)
@@ -67,7 +65,7 @@ mod tests {
             assert!(metadata.unwrap().date.is_some());
         }
 
-        for file in test::files {
+        for file in test::FILES {
             let metadata = parse_metadata(
                 &mut WordReader::new(
                     File::open(file)
@@ -76,7 +74,7 @@ mod tests {
             );
             assert!(metadata.is_ok());
 
-            let (scalar, timescale) = metadata.unwrap().timescale;
+            let (scalar, _timescale) = metadata.unwrap().timescale;
             assert!(scalar.is_some());
         }
 
@@ -85,7 +83,7 @@ mod tests {
     #[test]
     fn scopes() {
         // see if we can parse all signal trees successfully
-        for file_name in test::files {
+        for file_name in test::FILES {
             let file = File::open(file_name).unwrap();
             let vcd = parse_vcd(file);
 

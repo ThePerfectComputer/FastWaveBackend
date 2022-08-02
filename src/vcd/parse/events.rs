@@ -1,11 +1,9 @@
 //! part of the vcd parser that handles parsing the signal tree and
 //! building the resulting signal tree
-use function_name::named;
-
 use super::*;
 
 #[derive(Debug)]
-pub(super) enum BinaryParserErrTypes {x_value, z_value, u_value, other_value(char), too_long}
+pub(super) enum BinaryParserErrTypes {XValue, ZValue, UValue, OtherValue(char), TooLong}
 
 // We build a quick and not so dirty bit string parser.
 fn base2_str_to_byte(word : &[u8]) -> Result<u8, BinaryParserErrTypes> {
@@ -14,10 +12,7 @@ fn base2_str_to_byte(word : &[u8]) -> Result<u8, BinaryParserErrTypes> {
     // shouldn't have more than 8 chars in str
     let len = word.len();
     if len > 8 {
-        let (f, l )= (file!(), line!());
-        let err = format!(
-            "Error near {f}:{l}. Base2 string has length {len} > 8.");
-        return Err(BinaryParserErrTypes::too_long)
+        return Err(BinaryParserErrTypes::TooLong)
     }
 
     let bit_lut = [
@@ -35,10 +30,10 @@ fn base2_str_to_byte(word : &[u8]) -> Result<u8, BinaryParserErrTypes> {
         match chr {
             b'1' => {val = bit_lut[idx] | val}
             b'0' => {}
-            b'x' | b'X' => {return Err(BinaryParserErrTypes::x_value)}
-            b'z' | b'Z' => {return Err(BinaryParserErrTypes::z_value)}
-            b'u' | b'U' => {return Err(BinaryParserErrTypes::u_value)}
-            _    => {return Err(BinaryParserErrTypes::other_value(*chr as char))}
+            b'x' | b'X' => {return Err(BinaryParserErrTypes::XValue)}
+            b'z' | b'Z' => {return Err(BinaryParserErrTypes::ZValue)}
+            b'u' | b'U' => {return Err(BinaryParserErrTypes::UValue)}
+            _    => {return Err(BinaryParserErrTypes::OtherValue(*chr as char))}
         }
 
     }
@@ -48,7 +43,7 @@ fn base2_str_to_byte(word : &[u8]) -> Result<u8, BinaryParserErrTypes> {
 
 fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, BinaryParserErrTypes> {
     let mut vec_u8 : Vec<u8> = Vec::new();
-    let mut binary_str_as_bytes = binary_str.as_bytes();
+    let binary_str_as_bytes = binary_str.as_bytes();
 
     let mut tail_idx = binary_str_as_bytes.len();
     // clamp head if provided binary str is less than 8 long
@@ -57,7 +52,7 @@ fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, BinaryParserErrTyp
             {binary_str_as_bytes.len() - 8}
         else 
             {0};
-    while {tail_idx > 0} {
+    while tail_idx > 0 {
         let curr_b_val = &binary_str_as_bytes[head_idx..tail_idx];
         let val_u8 = base2_str_to_byte(curr_b_val)?;
         vec_u8.push(val_u8);
@@ -81,11 +76,10 @@ fn binary_str_to_vec_u8(binary_str : &str) -> Result<Vec<u8>, BinaryParserErrTyp
     Ok(vec_u8)
 }
 
-#[named]
 pub(super) fn parse_events<'a>(
     word_reader      : &mut WordReader,
     vcd              : &'a mut VCD,
-    signal_map       : &mut HashMap<String, Signal_Idx>
+    signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
 
     loop {
@@ -110,7 +104,7 @@ pub(super) fn parse_events<'a>(
                     // configurable.
                 let (f, l )= (file!(), line!());
                 let start_idx = u32::try_from(vcd.timeline.len()).map_err(
-                    |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                    |_| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                 vcd.timeline_markers.push(StartIdx(start_idx));
                 vcd.timeline.append(&mut value);
             }
@@ -119,7 +113,6 @@ pub(super) fn parse_events<'a>(
             "b" => {
                 let binary_value = &word[1..];
                 let observed_num_bits = binary_value.len();
-                let (f, l )= (file!(), line!());
 
                 let mut value_u8 : Vec<u8> = Vec::new();
                 let mut value_string = String::new();
@@ -131,9 +124,9 @@ pub(super) fn parse_events<'a>(
                 // Or else, we we propagate up other errors.
                 match binary_str_to_vec_u8(binary_value) {
                     Ok(result) => {value_u8 = result;}
-                    Err(BinaryParserErrTypes::x_value | 
-                        BinaryParserErrTypes::z_value |
-                        BinaryParserErrTypes::u_value
+                    Err(BinaryParserErrTypes::XValue | 
+                        BinaryParserErrTypes::ZValue |
+                        BinaryParserErrTypes::UValue
                     ) => 
                         {
                             store_as_string = true;
@@ -151,7 +144,7 @@ pub(super) fn parse_events<'a>(
 
                 // lookup signal idx
                 let (f, l )= (file!(), line!());
-                let Signal_Idx(ref signal_idx) = signal_map.get(word).ok_or(
+                let SignalIdx(ref signal_idx) = signal_map.get(word).ok_or(
                     format!("Error near {f}:{l}. Failed to lookup signal {word} at {cursor:?}"))?;
 
                 // account for fact that signal idx could be an alias, so there
@@ -161,8 +154,8 @@ pub(super) fn parse_events<'a>(
                     let signal = vcd.all_signals.get(*signal_idx).unwrap();
                     match signal {
                     Signal::Data {..} => {*signal_idx}
-                    Signal::Alias {name, signal_alias} => {
-                            let Signal_Idx(ref signal_idx) = signal_alias;
+                    Signal::Alias {signal_alias, ..} => {
+                            let SignalIdx(ref signal_idx) = signal_alias;
                             signal_idx.clone()
 
                         }
@@ -174,7 +167,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
                     Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
-                    self_idx, u8_timeline, u8_timeline_markers, string_timeline,
+                    u8_timeline, u8_timeline_markers, string_timeline,
                     string_timeline_markers, ..} => {
 
                         if signal_error.is_some() {continue;}
@@ -210,7 +203,7 @@ pub(super) fn parse_events<'a>(
 
                         let (f, l )= (file!(), line!());
                         let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
-                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                            |_| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                         let timeline_idx = TimelineIdx(timeline_idx);
 
                         if store_as_string {
@@ -264,7 +257,7 @@ pub(super) fn parse_events<'a>(
                 // lookup signal idx
                 let hash = &word[1..];
                 let (f, l )= (file!(), line!());
-                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                let SignalIdx(ref signal_idx) = signal_map.get(hash).ok_or(
                     format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}"))?;
 
                 // account for fact that signal idx could be an alias, so there
@@ -274,8 +267,8 @@ pub(super) fn parse_events<'a>(
                     let signal = vcd.all_signals.get(*signal_idx).unwrap();
                     match signal {
                     Signal::Data {..} => {*signal_idx}
-                    Signal::Alias {name, signal_alias} => {
-                            let Signal_Idx(ref signal_idx) = signal_alias;
+                    Signal::Alias {signal_alias, ..} => {
+                            let SignalIdx(ref signal_idx) = signal_alias;
                             signal_idx.clone()
 
                         }
@@ -287,7 +280,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
                     Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
-                    self_idx, u8_timeline, u8_timeline_markers, ..} => {
+                    u8_timeline, u8_timeline_markers, ..} => {
 
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {continue;}
@@ -321,7 +314,7 @@ pub(super) fn parse_events<'a>(
 
                         let (f, l )= (file!(), line!());
                         let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
-                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                            |_| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                         let timeline_idx = TimelineIdx(timeline_idx);
 
                         u8_timeline_markers.push(timeline_idx);
@@ -342,7 +335,7 @@ pub(super) fn parse_events<'a>(
                 // lokup signal idx
                 let hash = &word[1..];
                 let (f, l )= (file!(), line!());
-                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                let SignalIdx(ref signal_idx) = signal_map.get(hash).ok_or(
                     format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}"))?;
 
                 // account for fact that signal idx could be an alias, so there
@@ -352,8 +345,8 @@ pub(super) fn parse_events<'a>(
                     let signal = vcd.all_signals.get(*signal_idx).unwrap();
                     match signal {
                     Signal::Data {..} => {*signal_idx}
-                    Signal::Alias {name, signal_alias} => {
-                            let Signal_Idx(ref signal_idx) = signal_alias;
+                    Signal::Alias {signal_alias, ..} => {
+                            let SignalIdx(ref signal_idx) = signal_alias;
                             signal_idx.clone()
 
                         }
@@ -365,7 +358,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
                     Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
-                    self_idx, u8_timeline, u8_timeline_markers, scope_parent, ..} => {
+                    u8_timeline, u8_timeline_markers, ..} => {
 
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {continue;}
@@ -399,7 +392,7 @@ pub(super) fn parse_events<'a>(
 
                         let (f, l )= (file!(), line!());
                         let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
-                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                            |_| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                         let timeline_idx = TimelineIdx(timeline_idx);
 
                         u8_timeline_markers.push(timeline_idx);
@@ -421,7 +414,7 @@ pub(super) fn parse_events<'a>(
                 // lokup signal idx
                 let hash = &word[1..];
                 let (f, l )= (file!(), line!());
-                let Signal_Idx(ref signal_idx) = signal_map.get(hash).ok_or(
+                let SignalIdx(ref signal_idx) = signal_map.get(hash).ok_or(
                     format!("Error near {f}:{l}. Failed to lookup signal {hash} at {cursor:?}"))?;
 
                 // account for fact that signal idx could be an alias, so there
@@ -431,8 +424,8 @@ pub(super) fn parse_events<'a>(
                     let signal = vcd.all_signals.get(*signal_idx).unwrap();
                     match signal {
                     Signal::Data {..} => {*signal_idx}
-                    Signal::Alias {name, signal_alias} => {
-                            let Signal_Idx(ref signal_idx) = signal_alias;
+                    Signal::Alias {signal_alias, ..} => {
+                            let SignalIdx(ref signal_idx) = signal_alias;
                             signal_idx.clone()
 
                         }
@@ -444,8 +437,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.all_signals.get_mut(signal_idx).unwrap();
                 match signal {
                     Signal::Data {name, sig_type, ref mut signal_error, num_bits, 
-                    self_idx, u8_timeline, u8_timeline_markers, string_timeline,
-                    string_timeline_markers, ..} => {
+                    string_timeline, string_timeline_markers, ..} => {
 
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {continue;}
@@ -479,7 +471,7 @@ pub(super) fn parse_events<'a>(
 
                         let (f, l )= (file!(), line!());
                         let timeline_idx = u32::try_from(vcd.timeline.len()).map_err(
-                            |e| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
+                            |_| format!("Error near {f}:{l}. Failed to convert from usize to u32."))?;
                         let timeline_idx = TimelineIdx(timeline_idx);
 
                         string_timeline_markers.push(timeline_idx);

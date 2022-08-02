@@ -12,17 +12,9 @@ pub(super) struct Word(pub(super) usize);
 #[derive(Debug, Clone)]
 pub(super) struct Cursor(pub(super) Line, pub(super) Word);
 
-impl Cursor {
-    pub(super) fn error(&self, word : &str) -> Result<(), String> {
-        let Cursor(Line(line_no), Word(word_no)) = self;
-        Err(format!("Error on word '{word}' {word_no} words into line {line_no}!"))
-    }
-
-}
-
 pub struct WordReader {
     reader       : io::BufReader<File>,
-    EOF          : bool,
+    eof          : bool,
     buffers      : Vec<String>,
     curr_line    : usize,
     str_slices   : VecDeque<(*const u8, usize, Cursor)>,
@@ -31,10 +23,10 @@ pub struct WordReader {
 
 impl WordReader {
     pub(super) fn new(file : File) -> WordReader {
-        let mut reader = io::BufReader::new(file);
+        let reader = io::BufReader::new(file);
         WordReader {
             reader       : reader,
-            EOF          : false,
+            eof          : false,
             buffers      : vec![],
             curr_line    : 0,
             str_slices   : VecDeque::new(),
@@ -48,7 +40,7 @@ impl WordReader {
         if self.str_slices.is_empty() {
             self.buffers.clear();
 
-            if self.EOF {return None}
+            if self.eof {return None}
 
             let num_buffers = 10;
 
@@ -60,11 +52,11 @@ impl WordReader {
                 // if we've reached the end of the file on the first attempt to read
                 // a line in this for loop, no further attempts are necessary and we
                 if bytes_read == 0 {
-                    self.EOF = true; 
+                    self.eof = true; 
                     break;
                 }
 
-                let mut words = self.buffers[buf_idx].split_ascii_whitespace();
+                let words = self.buffers[buf_idx].split_ascii_whitespace();
                 
                 for word in words.enumerate() {
                     let (word_idx, word) = word;
