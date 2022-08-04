@@ -17,8 +17,7 @@ pub(super) fn parse_date(
     
         let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
         if !days.contains(&word) {
-            let msg  = format!("Error near {}:{}. Reached end of file without \
-                                terminating parser", file!(), line!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{word} is not a valid weekday : expected one of {days:?}\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -38,8 +37,7 @@ pub(super) fn parse_date(
             ];
 
         if !months.contains(&word) {
-            let msg  = format!("Error near {}:{}. Reached end of file without \
-                                terminating parser", file!(), line!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{word} is not a valid month : expected one of {months:?}\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -54,12 +52,11 @@ pub(super) fn parse_date(
 
         let date : u8 = match word.to_string().parse() {
             Ok(date) => date,
-            Err(_) => {return Err("".to_string())}
+            Err(e) => {return Err(format!("Error near {}:{}. {e}", file!(), line!()))}
         };
 
         if date > 31 {
-            let msg  = format!("Error near {}:{}. Reached end of file without \
-                                terminating parser", file!(), line!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{word} is not a valid date : must be between 0 and 31\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -77,7 +74,7 @@ pub(super) fn parse_date(
         res.assert_match()?;
         let hh : u8 = res.matched.to_string()
                         .parse()
-                        .map_err(|_| "failed to parse".to_string())?;
+                        .map_err(|e| format!("Error near {}:{}. {e}", file!(), line!()))?;
 
         if hh > 23 {
             let msg  = format!("Error near {}:{}.", file!(), line!());
@@ -92,7 +89,7 @@ pub(super) fn parse_date(
         res.assert_match()?;
         let mm : u8 = res.matched.to_string()
                         .parse()
-                        .map_err(|_| "failed to parse".to_string())?;
+                        .map_err(|e| format!("Error near {}:{}. {e}", file!(), line!()))?;
 
         if mm > 60 {
             let msg  = format!("Error near {}:{}.", file!(), line!());
@@ -107,7 +104,7 @@ pub(super) fn parse_date(
         let residual = &res.residual[1..]; // chop of colon which is at index 0
         let ss : u8 = residual.to_string()
                         .parse()
-                        .map_err(|_| "failed to parse".to_string())?;
+                        .map_err(|e| format!("Error near {}:{}. {e}", file!(), line!()))?;
 
         if ss > 60 {
             let msg  = format!("Error near {}:{}.", file!(), line!());
@@ -132,7 +129,7 @@ pub(super) fn parse_date(
         return Ok(full_date.unwrap())
     }
 
-    Err("failed to parse date".to_string())
+    Err(format!("Error near {}:{}. Failed to parse date.", file!(), line!()))
 
 }
 
@@ -140,16 +137,7 @@ pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, St
     let mut version = String::new();
 
     loop {
-        let word = word_reader.next_word();
-
-        // if there isn't another word left in the file, then we exit
-        if word.is_none() {
-            let msg  = format!("Error near {}:{}. Reached end of file without \
-                               terminating parser", file!(), line!());
-            return Err(msg)
-        }
-
-        let (word, _) = word.unwrap();
+        let (word, _) = word_reader.next_word()?;
 
         if word == "$end" {
             // truncate trailing whitespace
@@ -165,23 +153,20 @@ pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, St
 }
 
 pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timescale), String> {
-    let err_msg = format!("Error near {}:{}. No more words left in vcd file.", 
-                            file!(), line!());
 
-    // we might see `scalarunit $end` or `scalar unit $end`
-
+    // we might see `1ps $end` or `1 ps $end`
     // first get timescale
-    let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
+    let (word, _) = word_reader.next_word()?;
     let word = word.to_string();
     let ParseResult{matched, residual} = take_while(word.as_str(), digit);
     let scalar = matched;
 
     let scalar : u32 = scalar.to_string().parse()
-                        .map_err(|_| &err_msg)?;
+                        .map_err(|e| format!("Error near {}:{}. {e}", file!(), line!()))?;
 
     let timescale = {
         if residual == "" {
-            let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
+            let (word, _) = word_reader.next_word()?;
             let unit = match word {
                 "fs" => {Ok(Timescale::Fs)}
                 "ps" => {Ok(Timescale::Ps)}
@@ -189,19 +174,20 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
                 "us" => {Ok(Timescale::Us)}
                 "ms" => {Ok(Timescale::Ms)}
                 "s"  => {Ok(Timescale::S)}
-                _    => {Err(err_msg.to_string())}
+                _    => {Err(format!("Error near {}:{}. Unknown unit {word}.", file!(), line!()))}
             }.unwrap();
         
             (Some(scalar), unit)
         }
         else {
             let unit = match residual {
+                "fs" => {Ok(Timescale::Fs)}
                 "ps" => {Ok(Timescale::Ps)}
                 "ns" => {Ok(Timescale::Ns)}
                 "us" => {Ok(Timescale::Us)}
                 "ms" => {Ok(Timescale::Ms)}
                 "s"  => {Ok(Timescale::S)}
-                _    => {Err(err_msg.to_string())}
+                _    => {Err(format!("Error near {}:{}. Unknown unit {residual}.", file!(), line!()))}
             }.unwrap();
         
             (Some(scalar), unit)
@@ -209,7 +195,7 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
     };
 
     // then check for the `$end` keyword
-    let (end, _) = word_reader.next_word().ok_or(&err_msg)?;
+    let (end, _) = word_reader.next_word()?;
     tag(end, "$end").assert_match()?;
 
     return Ok(timescale);
@@ -217,8 +203,6 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
 }
 
 pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
-    let err_msg = format!("Error near {}:{}. No more words left in vcd file.", 
-                            file!(), line!());
 
     let mut metadata = Metadata {
         date : None,
@@ -228,7 +212,7 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
 
     loop {
         // check for another word in the file
-        let (word, _) = word_reader.next_word().ok_or(&err_msg)?;
+        let (word, _) = word_reader.next_word()?;
 
         let ParseResult{matched, residual} = tag(word, "$");
         match matched {
@@ -254,7 +238,7 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
                         let mut lookahead_5_words : Vec<(String, Cursor)> = Vec::new();
 
                         for _ in 0..5 {
-                            let (word, cursor) = word_reader.next_word().expect(err_msg.as_str());
+                            let (word, cursor) = word_reader.next_word()?;
                             let word = word.to_string();
                             match word.as_str() {
                                 "$end" => {

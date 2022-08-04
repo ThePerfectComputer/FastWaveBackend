@@ -84,9 +84,10 @@ pub(super) fn parse_events<'a>(
 
     loop {
         let next_word = word_reader.next_word();
-        // if we've reached the end of the file, then there is obviously
+        // The following is the only case where eof is not an error.
+        // If we've reached the end of the file, then there is obviously
         // nothing left to do...
-        if next_word.is_none() {break};
+        if next_word.is_err() {break};
 
         let (word, cursor) = next_word.unwrap();
         let Cursor(Line(_), Word(word_in_line_idx)) = cursor;

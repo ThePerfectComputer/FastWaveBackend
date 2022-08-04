@@ -76,9 +76,7 @@ pub(super) fn ident(
 ) -> Result<(), String> {
     // let keyword = "module";
 
-    let err : Result<(), String> = Err(format!("reached end of file without parser leaving ident"));
-    let word = word_reader.next_word();
-    let (word, cursor) = word.ok_or(err).unwrap();
+    let (word, cursor) = word_reader.next_word()?;
 
     if word == keyword {
         return Ok(())
