@@ -119,7 +119,7 @@ fn previous_symbol(level: u32) -> Option<BacktraceSymbol> {
 
 impl From<FileStatus> for String {
     fn from(f: FileStatus) -> String {
-        let sym = previous_symbol(1);
+        let sym = previous_symbol(2);
         let filename  = sym
                         .as_ref()
                         .and_then(BacktraceSymbol::filename)
