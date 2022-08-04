@@ -24,16 +24,27 @@ The first build of the program may take some time.
 
 You can run all the tests with ``cargo test``
 
+# Testing on Bad Files
+You may wish to test the parser on a malformed VCD just to make
+sure that the parser gives useful/sane errors.
+
+Here's a command to test on a malformed VCD:
+`cargo run --release test-vcd-files/VCD_file_with_errors.vcd`
+
+Should work well on Linux. On MacOS, remove `release` for line numbers
+in error, see
+[here](https://github.com/rust-lang/cargo/issues/4490#issuecomment-1205611137).
+`cargo run test-vcd-files/VCD_file_with_errors.vcd`
+
 # TODO
 
 ## Features
- - [ ] move parse_orphaned_vars to scopes.rs
+ - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
+       - support multithreaded re-ordering
  - [ ] Print out git commit or release number.
  - [ ] Should be able to load waveform whilst viewing it live.
        - could be quite challenging to implement for various reasons
  - [ ] Take a look at GTKWave parser to compare efficiency.
- - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
-       - support multithreaded re-ordering
 
 ## Repairs
  - [ ] make a custom date parser for possibly up to 18 different versions(that is, for each possible tool).
