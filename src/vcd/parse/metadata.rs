@@ -1,10 +1,8 @@
 use chrono::prelude::*;
 use itertools::Itertools;
-use function_name::named;
 
 use super::*;
 
-#[named]
 pub(super) fn parse_date(
     word_and_ctx1 : (&str, &Cursor),
     word_and_ctx2 : (&str, &Cursor),
@@ -19,7 +17,8 @@ pub(super) fn parse_date(
     
         let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
         if !days.contains(&word) {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}. Reached end of file without \
+                                terminating parser", file!(), line!());
             let msg2 = format!("{word} is not a valid weekday : expected one of {days:?}\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -39,7 +38,8 @@ pub(super) fn parse_date(
             ];
 
         if !months.contains(&word) {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}. Reached end of file without \
+                                terminating parser", file!(), line!());
             let msg2 = format!("{word} is not a valid month : expected one of {months:?}\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -58,7 +58,8 @@ pub(super) fn parse_date(
         };
 
         if date > 31 {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}. Reached end of file without \
+                                terminating parser", file!(), line!());
             let msg2 = format!("{word} is not a valid date : must be between 0 and 31\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -79,7 +80,7 @@ pub(super) fn parse_date(
                         .map_err(|_| "failed to parse".to_string())?;
 
         if hh > 23 {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{hh} is not a valid hour : must be between 0 and 23\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -94,7 +95,7 @@ pub(super) fn parse_date(
                         .map_err(|_| "failed to parse".to_string())?;
 
         if mm > 60 {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{mm} is not a valid minute : must be between 0 and 60\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -109,7 +110,7 @@ pub(super) fn parse_date(
                         .map_err(|_| "failed to parse".to_string())?;
 
         if ss > 60 {
-            let msg  = format!("reached end of file without parser leaving {}\n", function_name!());
+            let msg  = format!("Error near {}:{}.", file!(), line!());
             let msg2 = format!("{ss} is not a valid second : must be between 0 and 60\n");
             let msg3 = format!("failure location: {cursor:?}");
             return Err(format!("{}{}{}", msg, msg2, msg3))
@@ -135,7 +136,6 @@ pub(super) fn parse_date(
 
 }
 
-#[named]
 pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, String> {
     let mut version = String::new();
 
@@ -144,7 +144,9 @@ pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, St
 
         // if there isn't another word left in the file, then we exit
         if word.is_none() {
-            return Err(format!("reached end of file without parser leaving {}", function_name!()))
+            let msg  = format!("Error near {}:{}. Reached end of file without \
+                               terminating parser", file!(), line!());
+            return Err(msg)
         }
 
         let (word, _) = word.unwrap();
@@ -162,9 +164,9 @@ pub(super) fn parse_version(word_reader : &mut WordReader) -> Result<Version, St
     }
 }
 
-#[named]
 pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u32>, Timescale), String> {
-    let err_msg = format!("failed in {}", function_name!());
+    let err_msg = format!("Error near {}:{}. No more words left in vcd file.", 
+                            file!(), line!());
 
     // we might see `scalarunit $end` or `scalar unit $end`
 
@@ -214,9 +216,9 @@ pub(super) fn parse_timescale(word_reader : &mut WordReader) -> Result<(Option<u
 
 }
 
-#[named]
 pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, String> {
-    let err_msg = format!("reached end of file without parser leaving {}", function_name!());
+    let err_msg = format!("Error near {}:{}. No more words left in vcd file.", 
+                            file!(), line!());
 
     let mut metadata = Metadata {
         date : None,
@@ -234,7 +236,6 @@ pub(super) fn parse_metadata(word_reader : &mut WordReader) -> Result<Metadata, 
             "$" =>  {
                 match residual {
                     "date"      => {
-                        let err_msg = format!("reached end of file without parser leaving {}", function_name!());
                         // a date is typically composed of the 5 following words which can 
                         // occur in any order: 
                         // {Day, Month, Date(number in month), hh:mm:ss, year}.

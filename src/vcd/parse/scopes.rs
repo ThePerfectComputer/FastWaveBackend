@@ -1,17 +1,14 @@
 //! part of the vcd parser that handles parsing the signal tree and
 //! building the resulting signal tree
-use function_name::named;
-
 use super::*;
 
-#[named]
 pub(super) fn parse_var<'a>(
     word_reader      : &mut WordReader,
     parent_scope_idx : ScopeIdx,
     vcd              : &'a mut VCD,
     signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
-    let err = format!("reached end of file without parser leaving {}", function_name!());
+    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
     let (word, cursor) = word_reader.next_word().ok_or(&err)?;
     let expected_types = ["integer", "parameter", "real", "reg", "string", "wire", "tri1", "time"];
 
@@ -53,7 +50,6 @@ pub(super) fn parse_var<'a>(
     //                  ^ - signal_alias
     let (word, _) = word_reader.next_word().ok_or(&err)?;
     let signal_alias = word.to_string();
-    // dbg!(&signal_alias);
 
     // $var parameter 3 a IDLE $end
     //                    ^^^^ - full_signal_name(can extend until $end)
@@ -153,10 +149,8 @@ fn parse_orphaned_vars<'a>(
 
         // we shouldn't reach the end of the file here...
         if next_word.is_none() {
-            let (f, l )= (file!(), line!());
-            let msg = format!("Error near {f}:{l}.\
-                               Reached end of file without terminating parser");
-            Err(msg)?;
+            let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
+            Err(err)?;
         };
 
         let (word, cursor) = next_word.unwrap();
@@ -178,7 +172,6 @@ fn parse_orphaned_vars<'a>(
     Ok(())
 }
 
-#[named]
 pub(super) fn parse_signal_tree<'a>(
     word_reader      : &mut WordReader,
     parent_scope_idx : Option<ScopeIdx>,
@@ -188,7 +181,7 @@ pub(super) fn parse_signal_tree<'a>(
 
     // $scope module reg_mag_i $end
     //        ^^^^^^ - module keyword
-    let err = format!("reached end of file without parser leaving {}", function_name!());
+    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
     let (keyword, cursor) = word_reader.next_word().ok_or(&err)?;
 
     let expected = ["module", "begin", "task", "function"];
@@ -233,7 +226,6 @@ pub(super) fn parse_signal_tree<'a>(
     //                         ^^^^ - end keyword
     ident(word_reader, "$end")?;
 
-    let err = format!("reached end of file without parser leaving {}", function_name!());
     loop {
         let (word, cursor) = word_reader.next_word().ok_or(&err)?;
         let ParseResult{matched, residual} = tag(word, "$");
@@ -274,16 +266,14 @@ pub(super) fn parse_signal_tree<'a>(
     Ok(())
 }
 
-#[named]
 pub(super) fn parse_scopes<'a>(
     word_reader      : &mut WordReader,
     vcd              : &'a mut VCD,
     signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
     // get the current word
-    let (f, l ) = (file!(), line!());
-    let msg = format!("Error near {f}:{l}. Current word empty!");
-    let (word, _) = word_reader.curr_word().ok_or(msg)?;
+    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
+    let (word, _) = word_reader.curr_word().ok_or(&err)?;
 
     // we may have orphaned vars that occur before the first scope
     if word == "$var" {
@@ -291,9 +281,7 @@ pub(super) fn parse_scopes<'a>(
     } 
     
     // get the current word
-    let (f, l ) = (file!(), line!());
-    let msg = format!("Error near {f}:{l}. Current word empty!");
-    let (word, cursor) = word_reader.curr_word().ok_or(msg)?;
+    let (word, cursor) = word_reader.curr_word().ok_or(&err)?;
 
     // the current word should be "scope", as `parse_orphaned_vars`(if it
     // was called), should have terminated upon encountering "$scope".
@@ -302,14 +290,14 @@ pub(super) fn parse_scopes<'a>(
     if word != "$scope" {
         let (f, l )= (file!(), line!());
         let msg = format!("Error near {f}:{l}.\
-                            Expected $scope or $var, found {word} at {cursor:?}");
+                           Expected $scope or $var, found {word} at {cursor:?}");
         return Err(msg)
     }
 
     // now for the interesting part
     parse_signal_tree(word_reader, None, vcd, signal_map)?;
 
-    let err = format!("reached end of file without parser leaving {}", function_name!());
+    // let err = format!("reached end of file without parser leaving {}", function_name!());
     let expected_keywords = ["$scope", "$enddefinitions"];
 
     // there could be multiple signal trees, and unfortunately, we
