@@ -5,12 +5,16 @@ use std::str;
 use std::io::prelude::*;
 use std::io;
 
+use backtrace::{ Backtrace, BacktraceFrame, BacktraceSymbol };
+
 #[derive(Debug, Clone)]
 pub(super) struct Line(pub(super) usize);
 #[derive(Debug, Clone)]
 pub(super) struct Word(pub(super) usize);
 #[derive(Debug, Clone)]
 pub(super) struct Cursor(pub(super) Line, pub(super) Word);
+#[derive(Debug)]
+pub(super) enum FileStatus{Eof}
 
 pub struct WordReader {
     reader       : io::BufReader<File>,
@@ -20,6 +24,7 @@ pub struct WordReader {
     str_slices   : VecDeque<(*const u8, usize, Cursor)>,
     curr_slice   : Option<(*const u8, usize, Cursor)>,
 }
+
 
 impl WordReader {
     pub(super) fn new(file : File) -> WordReader {
@@ -34,13 +39,18 @@ impl WordReader {
         }
     }
 
-    pub(super) fn next_word(&mut self) -> Option<(&str, Cursor)> {
-        // if there are no more words, attempt to read more content
+
+    pub(super) fn next_word(&mut self) -> Result<(&str, Cursor), FileStatus> {
+        
+        // although reaching the eof is not technically an error, in most cases,
+        // we treat it like one in the rest of the codebase.
+
+        // if there are no more words in the buffer, attempt to read more content
         // from the file
         if self.str_slices.is_empty() {
             self.buffers.clear();
 
-            if self.eof {return None}
+            if self.eof {return Err(FileStatus::Eof)}
 
             let num_buffers = 10;
 
@@ -70,7 +80,7 @@ impl WordReader {
         // if after we've attempted to read in more content from the file,
         // there are still no words...
         if self.str_slices.is_empty() {
-            return None
+            return Err(FileStatus::Eof)
         }
 
         // if we make it here, we return the next word
@@ -78,21 +88,53 @@ impl WordReader {
             let (ptr, len, position) = self.str_slices.pop_front().unwrap();
             let slice = slice::from_raw_parts(ptr, len);
             self.curr_slice = Some((ptr, len, position.clone()));
-            return Some((str::from_utf8(slice).unwrap(), position));
+            return Ok((str::from_utf8(slice).unwrap(), position));
         };
     }
 
-    pub(super) fn curr_word(&mut self) -> Option<(&str, Cursor)> {
+    pub(super) fn curr_word(&mut self) -> Result<(&str, Cursor), FileStatus> {
         match &self.curr_slice {
             Some(slice) => {
                 unsafe {
                     let (ptr, len, position) = slice.clone();
                     let slice = slice::from_raw_parts(ptr, len);
-                    Some((str::from_utf8(slice).unwrap(), position))
+                    Ok((str::from_utf8(slice).unwrap(), position))
                 }
 
             }
-            None => {None}
+            None => {Err(FileStatus::Eof)}
+        }
+    }
+}
+
+fn previous_symbol(level: u32) -> Option<BacktraceSymbol> {
+    let (trace, curr_file, curr_line) = (Backtrace::new(), file!(), line!());
+    let frames = trace.frames();
+    frames.iter()
+          .flat_map(BacktraceFrame::symbols)
+          .skip_while(|s| s.filename().map(|p| !p.ends_with(curr_file)).unwrap_or(true)
+                       || s.lineno() != Some(curr_line))
+          .nth(1 + level as usize).cloned()
+}
+
+impl From<FileStatus> for String {
+    fn from(f: FileStatus) -> String {
+        let sym = previous_symbol(1);
+        let filename  = sym
+                        .as_ref()
+                        .and_then(BacktraceSymbol::filename)
+                        .map_or(None, |path| {path.to_str()})
+                        .unwrap_or("(Couldn't determine filename)");
+        let lineno    = sym
+                        .as_ref()
+                        .and_then(BacktraceSymbol::lineno)
+                        .map_or(None, |path| {Some(path.to_string())})
+                        .unwrap_or("(Couldn't determine line number)".to_string());
+
+        match f {
+            FileStatus::Eof => format!(
+                "Error near {filename}:{lineno} \
+                 No more words left in vcd file."),
         }
     }
 }

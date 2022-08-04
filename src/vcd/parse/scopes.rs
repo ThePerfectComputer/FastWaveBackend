@@ -8,8 +8,7 @@ pub(super) fn parse_var<'a>(
     vcd              : &'a mut VCD,
     signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
-    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
-    let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+    let (word, cursor) = word_reader.next_word()?;
     let expected_types = ["integer", "parameter", "real", "reg", "string", "wire", "tri1", "time"];
 
     // $var parameter 3 a IDLE $end
@@ -24,12 +23,14 @@ pub(super) fn parse_var<'a>(
         "tri1"       => {Ok(SigType::Tri1)}
         "time"       => {Ok(SigType::Time)}
         _ => {
-            let err = format!("found keyword `{word}` but expected one of {expected_types:?} on {cursor:?}");
+            let err = format!("Error near {}:{} \
+                               found keyword `{word}` but expected one of \
+                               {expected_types:?} on {cursor:?}", file!(), line!());
             Err(err)
         }
     }?;
 
-    let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+    let (word, cursor) = word_reader.next_word()?;
     let parse_err = format!("failed to parse as usize on {cursor:?}");
 
     // $var parameter 3 a IDLE $end
@@ -48,14 +49,14 @@ pub(super) fn parse_var<'a>(
 
     // $var parameter 3 a IDLE $end
     //                  ^ - signal_alias
-    let (word, _) = word_reader.next_word().ok_or(&err)?;
+    let (word, _) = word_reader.next_word()?;
     let signal_alias = word.to_string();
 
     // $var parameter 3 a IDLE $end
     //                    ^^^^ - full_signal_name(can extend until $end)
     let mut full_signal_name = Vec::<String>::new();
     loop {
-        let (word, _) = word_reader.next_word().ok_or(&err)?;
+        let (word, _) = word_reader.next_word()?;
         match word {
             "$end" => {break}
             _      => {full_signal_name.push(word.to_string())}
@@ -145,15 +146,7 @@ fn parse_orphaned_vars<'a>(
     parse_var(word_reader, scope_idx, vcd, signal_map)?;
 
     loop {
-        let next_word = word_reader.next_word();
-
-        // we shouldn't reach the end of the file here...
-        if next_word.is_none() {
-            let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
-            Err(err)?;
-        };
-
-        let (word, cursor) = next_word.unwrap();
+        let (word, cursor) = word_reader.next_word()?;
 
         match word {
             "$var" => {
@@ -161,9 +154,9 @@ fn parse_orphaned_vars<'a>(
             }
             "$scope" => {break}
             _ => {
-                let (f, l )= (file!(), line!());
-                let msg = format!("Error near {f}:{l}.\
-                Expected $scope or $var, found {word} at {cursor:?}");
+                let msg = format!("Error near {}:{}.\
+                          Expected $scope or $var, found \
+                          {word} at {cursor:?}", file!(), line!());
                 Err(msg)?;
             }
         };
@@ -181,20 +174,21 @@ pub(super) fn parse_signal_tree<'a>(
 
     // $scope module reg_mag_i $end
     //        ^^^^^^ - module keyword
-    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
-    let (keyword, cursor) = word_reader.next_word().ok_or(&err)?;
+    let (keyword, cursor) = word_reader.next_word()?;
 
     let expected = ["module", "begin", "task", "function"];
     if expected.contains(&keyword) {
         Ok(())
     } else {
-        let err = format!("found keyword `{keyword}` but expected one of `{expected:?}` on {cursor:?}");
+        let err = format!("Error near {}:{}. \
+                            found keyword `{keyword}` but expected one of \
+                            {expected:?} on {cursor:?}", file!(), line!());
         Err(err)
     }?;
 
     // $scope module reg_mag_i $end
     //               ^^^^^^^^^ - scope name
-    let (scope_name, _) = word_reader.next_word().ok_or(&err)?;
+    let (scope_name, _) = word_reader.next_word()?;
 
     let curr_scope_idx = ScopeIdx(vcd.all_scopes.len());
     
@@ -227,7 +221,7 @@ pub(super) fn parse_signal_tree<'a>(
     ident(word_reader, "$end")?;
 
     loop {
-        let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+        let (word, cursor) = word_reader.next_word()?;
         let ParseResult{matched, residual} = tag(word, "$");
         match matched {
             // we hope that this word starts with a `$`
@@ -251,13 +245,18 @@ pub(super) fn parse_signal_tree<'a>(
                         }
                     }
                     _ => {
-                        let err = format!("found keyword `{residual}` but expected `$scope`, `$var`, `$comment`, or `$upscope` on {cursor:?}");
+                        let err = format!("Error near {}:{}. \
+                                           found keyword `{residual}` but expected \
+                                           `$scope`, `$var`, `$comment`, or `$upscope` \
+                                           on {cursor:?}", file!(), line!());
                         return Err(err)
                     }
                 }
             }
             _ => {
-                let err = format!("found keyword `{matched}` but expected `$` on {cursor:?}");
+                let err = format!("Error near {}:{}. \
+                                  found keyword `{matched}` but \
+                                  expected `$` on {cursor:?}", file!(), line!());
                 return Err(err)
             }
         }
@@ -272,8 +271,7 @@ pub(super) fn parse_scopes<'a>(
     signal_map       : &mut HashMap<String, SignalIdx>
 ) -> Result<(), String> {
     // get the current word
-    let err = format!("Error near {}:{}. No more words left in vcd file.", file!(), line!());
-    let (word, _) = word_reader.curr_word().ok_or(&err)?;
+    let (word, _) = word_reader.curr_word()?;
 
     // we may have orphaned vars that occur before the first scope
     if word == "$var" {
@@ -281,16 +279,16 @@ pub(super) fn parse_scopes<'a>(
     } 
     
     // get the current word
-    let (word, cursor) = word_reader.curr_word().ok_or(&err)?;
+    let (word, cursor) = word_reader.curr_word()?;
 
     // the current word should be "scope", as `parse_orphaned_vars`(if it
     // was called), should have terminated upon encountering "$scope".
     // If `parse_orphaned_vars` was not called, `parse_scopes` should still
     // have only been called if the caller encountered the word "$scope"
     if word != "$scope" {
-        let (f, l )= (file!(), line!());
-        let msg = format!("Error near {f}:{l}.\
-                           Expected $scope or $var, found {word} at {cursor:?}");
+        let msg = format!("Error near {}:{}.\
+                           Expected $scope or $var, found \
+                           {word} at {cursor:?}", file!(), line!());
         return Err(msg)
     }
 
@@ -305,7 +303,7 @@ pub(super) fn parse_scopes<'a>(
     // because this loop gets a word from `next_word` instead of 
     // `curr_word()`.
     loop {
-        let (word, cursor) = word_reader.next_word().ok_or(&err)?;
+        let (word, cursor) = word_reader.next_word()?;
         match word {
             "$scope" => {
                 parse_signal_tree(word_reader, None, vcd, signal_map)?;
@@ -322,8 +320,9 @@ pub(super) fn parse_scopes<'a>(
                 }
             }
             _ => {
-                let err = format!("found keyword `{word}` but expected one \
-                of `{expected_keywords:?}` on {cursor:?}");
+                let err = format!("Error near {}:{} \
+                                found keyword `{word}` but expected one of \
+                                {expected_keywords:?} on {cursor:?}", file!(), line!());
                 return Err(err)
     
             }
