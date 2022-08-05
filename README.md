@@ -3,9 +3,13 @@ Copyright - Yehowshua Immanuel
 # A High performance, VCD Parser written in Rust
 
 ## Current Features
- - pretty fast, parses 3.04 GB VCD file in ~67s on M1 Macbook Air with 
+ - pretty fast, parses 3.04 GB VCD file in ~54s on M1 Macbook Air with 
    respect to 50s with GTKWave on the same device. FastWave currently
    offers highly robust error handling which GTKWave doesn't have.
+   
+   I noticed that when running FastWave in the VsCode terminal as opposed
+   to the MacOS system terminal or the Lapce terminal, FastWave takes 67s
+   to parse the 3.04GB file.
 
 
 # Current Limitations
@@ -31,16 +35,14 @@ sure that the parser gives useful/sane errors.
 Here's a command to test on a malformed VCD:
 `cargo run --release test-vcd-files/VCD_file_with_errors.vcd`
 
-Should work well on Linux. On MacOS, remove `release` for line numbers
-in error, see
-[here](https://github.com/rust-lang/cargo/issues/4490#issuecomment-1205611137).
-`cargo run test-vcd-files/VCD_file_with_errors.vcd`
 
 # TODO
 
 ## Features
+ - [ ] macro for getting line number when propagating errors
  - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
        - support multithreaded re-ordering
+ - [ ] looks into making a macro for filename and linenumber later
  - [ ] Print out git commit or release number.
  - [ ] Should be able to load waveform whilst viewing it live.
        - could be quite challenging to implement for various reasons
