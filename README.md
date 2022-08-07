@@ -4,7 +4,7 @@ Copyright - Yehowshua Immanuel
 
 ## Current Features
  - pretty fast, parses 3.04 GB VCD file in ~54s on M1 Macbook Air with 
-   respect to 50s with GTKWave on the same device. FastWave currently
+   respect to 30s with GTKWave on the same device. FastWave currently
    offers highly robust error handling which GTKWave doesn't have.
    
    I noticed that when running FastWave in the VsCode terminal as opposed
@@ -40,6 +40,7 @@ Here's a command to test on a malformed VCD:
 
 ## Features
  - [ ] macro for getting line number when propagating errors
+ - [ ] search for any unwraps or any direct vectors indexing
  - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
        - support multithreaded re-ordering
  - [ ] looks into making a macro for filename and linenumber later
