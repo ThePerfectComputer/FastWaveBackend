@@ -3,13 +3,13 @@ Copyright - Yehowshua Immanuel
 # A High performance, VCD Parser written in Rust
 
 ## Current Features
- - pretty fast, parses 3.04 GB VCD file in ~54s on M1 Macbook Air with 
+ - pretty fast, parses 3.04 GB VCD file in ~27.23s on M1 Macbook Air with 
    respect to 30s with GTKWave on the same device. FastWave currently
-   offers highly robust error handling which GTKWave doesn't have.
+   offers highly robust error(at least on the sample VCD files in this
+   repository) handling which GTKWave doesn't have.
    
    I noticed that when running FastWave in the VsCode terminal as opposed
-   to the MacOS system terminal or the Lapce terminal, FastWave takes 67s
-   to parse the 3.04GB file.
+   to the MacOS system terminal or the Lapce terminal.
 
 
 # Current Limitations
@@ -40,6 +40,7 @@ Here's a command to test on a malformed VCD:
 
 ## Features
  - [ ] macro for getting line number when propagating errors
+ - [ ] search for any ok_or's
  - [ ] search for any unwraps or any direct vectors indexing
  - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
        - support multithreaded re-ordering

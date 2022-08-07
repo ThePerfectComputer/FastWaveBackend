@@ -22,9 +22,31 @@ use events::*;
 use std::cmp::Ordering;
 
 fn compare_strs(a: &str, b: &str) -> Ordering {
-    let last_idx = if a.len() > b.len() { a.len() } else { b.len() };
-    // let last_idx += -1;
-    Ordering::Less
+    // choose the smaller of the two indices
+    let upper_bound = if a.len() > b.len() { b.len() } else { a.len() };
+    let a_as_bytes = a.as_bytes();
+    let b_as_bytes = b.as_bytes();
+
+    for i in 0..upper_bound {
+        let a_byte = a_as_bytes[i];
+        let b_byte = b_as_bytes[i];
+        if a_byte > b_byte {
+            return Ordering::Greater;
+        }
+        if b_byte > a_byte {
+            return Ordering::Less;
+        }
+    }
+
+    if a.len() > b.len() {
+        return Ordering::Greater;
+    }
+
+    if a.len() < b.len() {
+        return Ordering::Less;
+    }
+
+    return Ordering::Equal;
 }
 
 fn ordered_binary_lookup(map: &Vec<(String, SignalIdx)>, key: &str) -> Result<SignalIdx, String> {
@@ -34,7 +56,7 @@ fn ordered_binary_lookup(map: &Vec<(String, SignalIdx)>, key: &str) -> Result<Si
     while lower_idx <= upper_idx {
         let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
         let (str_val, signal_idx) = map.get(mid_idx).unwrap();
-        let ordering = key.partial_cmp(str_val.as_str()).unwrap();
+        let ordering = compare_strs(key, str_val.as_str());
 
         match ordering {
             Ordering::Less => {
@@ -93,21 +115,35 @@ pub fn parse_vcd(file: File) -> Result<VCD, String> {
     signal_map1.sort_by(|a: &(String, SignalIdx), b: &(String, SignalIdx)| {
         let a = &a.0;
         let b = &b.0;
-        a.partial_cmp(&b).unwrap()
+        compare_strs(a, b)
     });
 
-    let now = std::time::Instant::now();
     for (k, v) in &signal_map1 {
         let signal_idx = ordered_binary_lookup(&signal_map1, k.as_str())?;
         assert!(*v == signal_idx);
     }
-    let ordered_binary_search_elapsed = now.elapsed();
-    println!(
-        "ordered_binary_search_elapsed: {:.2?}",
-        ordered_binary_search_elapsed
-    );
 
-    // parse_events(&mut wosrd_gen, &mut vcd, &mut signal_map)?;
+    // let now = std::time::Instant::now();
+    // for (k, v) in &signal_map1 {
+    //     let signal_idx = ordered_binary_lookup(&signal_map1, k.as_str())?;
+    //     assert!(*v == signal_idx);
+    // }
+    // let ordered_binary_search_elapsed = now.elapsed();
+    // println!(
+    //     "ordered_binary_search_elapsed: {:.2?}",
+    //     ordered_binary_search_elapsed
+    // );
+
+    // let now = std::time::Instant::now();
+    // for (k, v) in &signal_map1 {
+    //     // let signal_idx = ordered_binary_lookup(&signal_map1, k.as_str())?;
+    //     let signal_idx = signal_map.get(k).unwrap();
+    //     assert!(*v == *signal_idx);
+    // }
+    // let hashmap_search_elapsed = now.elapsed();
+    // println!("hashmap_search_elapsed: {:.2?}", hashmap_search_elapsed);
+
+    parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
 
     Ok(vcd)
 }
