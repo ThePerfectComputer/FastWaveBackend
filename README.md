@@ -9,7 +9,8 @@ Copyright - Yehowshua Immanuel
    repository) handling which GTKWave doesn't have.
    
    I noticed that when running FastWave in the VsCode terminal as opposed
-   to the MacOS system terminal or the Lapce terminal.
+   to the MacOS system terminal or the Lapce terminal, FastWave is notably
+   slower.
 
 
 # Current Limitations
@@ -42,6 +43,7 @@ Here's a command to test on a malformed VCD:
  - [ ] macro for getting line number when propagating errors
  - [ ] search for any ok_or's
  - [ ] search for any unwraps or any direct vectors indexing
+ - [ ] 
  - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
        - support multithreaded re-ordering
  - [ ] looks into making a macro for filename and linenumber later
@@ -60,4 +62,4 @@ Here's a command to test on a malformed VCD:
  - [ ] Change error messages to line and filenames. Go through all calls to ``format!`` whilst also keeping performance in mind.
 
 ## Marketing
- - [ ] Send survey to community channel.
+ - [ ] Send survey to community 
