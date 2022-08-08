@@ -1,8 +1,11 @@
 mod reader;
-pub use reader::*;
+use reader::*;
 
 mod types;
-pub use types::*;
+pub(super) use types::*;
 
 mod parse;
-pub use parse::*;
+pub(super) use parse::*;
+
+mod utilities;
+use utilities::*;

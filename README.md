@@ -40,6 +40,8 @@ Here's a command to test on a malformed VCD:
 # TODO
 
 ## Features
+ - [ ] be explicit with imports, remove exports as possible
+       once FastWave is known to be fairly stable.
  - [ ] macro for getting line number when propagating errors
  - [ ] search for any ok_or's
  - [ ] search for any unwraps or any direct vectors indexing
