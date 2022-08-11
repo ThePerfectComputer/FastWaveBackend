@@ -21,9 +21,11 @@ fn main() -> std::io::Result<()> {
 
     let file = File::open(&args.path)?;
     let vcd = parse_vcd(file).unwrap();
-    // vcd.
+
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
 
     Ok(())
 }

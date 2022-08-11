@@ -5,9 +5,6 @@ pub(super) fn parse_events<'a>(
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
-    // let hash_time = std::time::Duration::ZERO;
-    // let hash_time = std::time::Duration::ZERO;
-
     loop {
         let next_word = word_reader.next_word();
 
@@ -18,7 +15,7 @@ pub(super) fn parse_events<'a>(
             break;
         };
 
-        let (word, cursor) = next_word.unwrap();
+        let (word, cursor) = next_word!(word_reader)?;
         let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
         // we only want to match on the first word in a line
         if word_in_line_idx != 1 {
@@ -29,10 +26,13 @@ pub(super) fn parse_events<'a>(
             "#" => {
                 let value = &word[1..];
                 let (f, l) = (file!(), line!());
-                let value = BigInt::parse_bytes(value.as_bytes(), 10).ok_or(
-                    format!("Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}")
-                        .as_str(),
-                )?;
+                let value = BigInt::parse_bytes(value.as_bytes(), 10)
+                    .ok_or(())
+                    .map_err(|_| {
+                        format!(
+                            "Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}"
+                        )
+                    })?;
                 let (_, mut value) = value.to_bytes_le();
                 // TODO : u32 helps with less memory, but should ideally likely be
                 // configurable.
@@ -177,6 +177,7 @@ pub(super) fn parse_events<'a>(
                                 (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
 
                             while curr_num_bytes < bytes_required {
+                                // TODO: remove once library is known to be stable
                                 // useful for debugging
                                 // let err = format!("Error at {cursor:?}.\
                                 // num_bits = {num_bits}, \

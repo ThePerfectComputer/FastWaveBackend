@@ -183,8 +183,7 @@ pub(super) fn parse_timescale(
                     file!(),
                     line!()
                 )),
-            }
-            .unwrap();
+            }?;
 
             (Some(scalar), unit)
         } else {
@@ -200,8 +199,7 @@ pub(super) fn parse_timescale(
                     file!(),
                     line!()
                 )),
-            }
-            .unwrap();
+            }?;
 
             (Some(scalar), unit)
         }
@@ -293,7 +291,7 @@ pub(super) fn parse_metadata(word_reader: &mut WordReader) -> Result<Metadata, S
 
                             // store date and exit loop if a match is found
                             if parsed_date.is_ok() {
-                                metadata.date = Some(parsed_date.unwrap());
+                                metadata.date = Some(parsed_date?);
                                 break;
                             }
                         }
