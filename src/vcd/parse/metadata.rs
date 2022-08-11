@@ -223,13 +223,7 @@ pub(super) fn parse_metadata(word_reader: &mut WordReader) -> Result<Metadata, S
 
     loop {
         // check for another word in the file
-        let (word, _) = word_reader.next_word().ok_or(()).map_err(|_| {
-            format!(
-                "Error near {}:{}. Did not expect to reach end of file here.",
-                file!(),
-                line!()
-            )
-        })?;
+        let (word, _) = next_word!(word_reader)?;
 
         let ParseResult { matched, residual } = tag(word, "$");
         match matched {

@@ -40,8 +40,11 @@ Here's a command to test on a malformed VCD:
 # TODO
 
 ## Features
+ - [ ] remove Result<..> from reader
  - [ ] be explicit with imports, remove exports as possible
        once FastWave is known to be fairly stable.
+ - [ ] do a read through all the code
+    - make contents of src/types.rs all public
  - [ ] macro for getting line number when propagating errors
  - [ ] search for any ok_or's
  - [ ] search for any unwraps or any direct vectors indexing
