@@ -36,8 +36,8 @@ slower.
 
 | Software | Time(s) | Memory(MB) |
 |----------|---------|------------|
-| GtkWave  | ~30     | 89.8       |
 | FastWave | 15.09   | 267.3      |
+| GtkWave  | ~30     | 89.8       |
 
 
 # Current Limitations
