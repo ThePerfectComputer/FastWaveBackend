@@ -3,14 +3,41 @@ Copyright - Yehowshua Immanuel
 # A High performance, VCD Parser written in Rust
 
 ## Current Features
- - pretty fast, parses 3.04 GB VCD file in ~27.23s on M1 Macbook Air with 
-   respect to 30s with GTKWave on the same device. FastWave currently
-   offers highly robust error(at least on the sample VCD files in this
-   repository) handling which GTKWave doesn't have.
+
+FastWave currently offers highly robust error(at least on the sample 
+VCD files in this repository) handling which GTKWave doesn't have. For
+eample, selecting the ``UTILIZATON_ENABLED`` after opening 
+[test2x2_regex22_string1.vcd](./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd),
+(one of the sample xilinx vcd test files) in GtkWave, will crash GtkWave since
+this signal is malformed. FastWave on the otherhand simply informs you the
+signal is malformed.
+
+## Performance
+
+### Methods
+Below is a table of performance comparisons on a large 3.04GB VCD file
+that can be found 
+[here](https://drive.google.com/file/d/1pfm2qo2l8fGTHHJ8TLrg1vSGaV_TUbp2/view?usp=sharing).
+
+For getting the GtkWave results, I fired up GtkWave, clicke on 
+``File``->``Open New Window``, and selected the large VCD file.
+I started my stopwatch as soon as I pressed enter to beging loading the VCD
+file, and stopped my stopwatch once the GtkWave titlebar reached 100%.
    
-   I noticed that when running FastWave in the VsCode terminal as opposed
-   to the MacOS system terminal or the Lapce terminal, FastWave is notably
-   slower.
+To get the memory consumption, I opened Activity Monitor on Mac, and recorded
+the GtkWave memory usage before and after loading the large VCD file, and 
+took the difference.
+
+I noticed that when running FastWave in the VsCode terminal as opposed
+to the MacOS system terminal or the Lapce terminal, FastWave is notably
+slower.
+
+### Results
+
+| Software | Time(s) | Memory(MB) |
+|----------|---------|------------|
+| GtkWave  | ~30     | 89.8       |
+| FastWave | 15.09   | 267.3      |
 
 
 # Current Limitations
@@ -40,22 +67,13 @@ Here's a command to test on a malformed VCD:
 # TODO
 
 ## Features
- - [ ] remove Result<..> from reader
  - [ ] be explicit with imports, remove exports as possible
        once FastWave is known to be fairly stable.
  - [ ] do a read through all the code
-    - make contents of src/types.rs all public
- - [ ] macro for getting line number when propagating errors
- - [ ] search for any ok_or's
- - [ ] search for any unwraps or any direct vectors indexing
- - [ ] 
- - [ ] re-order all signal timelines as binary balanced trees with respect to timestamps
-       - support multithreaded re-ordering
- - [ ] looks into making a macro for filename and linenumber later
+    - make contents of src/types.rs public as necessary.
  - [ ] Print out git commit or release number.
- - [ ] Should be able to load waveform whilst viewing it live.
-       - could be quite challenging to implement for various reasons
  - [ ] Take a look at GTKWave parser to compare efficiency.
+ - [ ] Move part of the performance section to another markdown file.
 
 ## Repairs
  - [ ] make a custom date parser for possibly up to 18 different versions(that is, for each possible tool).
@@ -64,7 +82,10 @@ Here's a command to test on a malformed VCD:
        able to successfully parse all sample VCDs.
 
 ## Code Consistency
- - [ ] Change error messages to line and filenames. Go through all calls to ``format!`` whilst also keeping performance in mind.
+ - [ ] Change error messages to line and filenames. Go through all calls to unwrap.
+   - [ ] search for any unwraps or any direct vectors indexing
+ - [ ] Handle TODOs
+ - [ ] Remove debug code/comments.
 
 ## Marketing
  - [ ] Send survey to community 
