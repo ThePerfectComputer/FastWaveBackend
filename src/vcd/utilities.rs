@@ -12,7 +12,7 @@ pub(super) enum BinaryParserErrTypes {
 }
 
 // We build a quick and not so dirty bit string parser.
-pub(super) fn base2_str_to_byte(word: &[u8]) -> Result<u8, BinaryParserErrTypes> {
+fn base2_str_to_byte(word: &[u8]) -> Result<u8, BinaryParserErrTypes> {
     let mut val = 0u8;
 
     // shouldn't have more than 8 chars in str

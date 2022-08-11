@@ -10,10 +10,11 @@ pub(super) fn parse_events<'a>(
 
     loop {
         let next_word = word_reader.next_word();
+
         // The following is the only case where eof is not an error.
         // If we've reached the end of the file, then there is obviously
         // nothing left to do...
-        if next_word.is_err() {
+        if next_word.is_none() {
             break;
         };
 
@@ -77,7 +78,7 @@ pub(super) fn parse_events<'a>(
                 }
 
                 // this word should be the signal alias
-                let (word, cursor) = word_reader.next_word().unwrap();
+                let (word, cursor) = next_word!(word_reader)?;
 
                 // lookup signal idx
                 let SignalIdx(ref signal_idx) = signal_map.get(word).ok_or(()).map_err(|_| {

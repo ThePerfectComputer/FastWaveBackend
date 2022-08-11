@@ -13,12 +13,8 @@ pub(super) struct Line(pub(super) usize);
 pub(super) struct Word(pub(super) usize);
 #[derive(Debug, Clone)]
 pub(super) struct Cursor(pub(super) Line, pub(super) Word);
-#[derive(Debug)]
-pub(super) enum FileStatus {
-    Eof,
-}
 
-pub struct WordReader {
+pub(super) struct WordReader {
     reader: io::BufReader<File>,
     eof: bool,
     buffers: Vec<String>,
@@ -40,7 +36,7 @@ impl WordReader {
         }
     }
 
-    pub(super) fn next_word(&mut self) -> Result<(&str, Cursor), FileStatus> {
+    pub(super) fn next_word(&mut self) -> Option<(&str, Cursor)> {
         // although reaching the eof is not technically an error, in most cases,
         // we treat it like one in the rest of the codebase.
 
@@ -50,7 +46,7 @@ impl WordReader {
             self.buffers.clear();
 
             if self.eof {
-                return Err(FileStatus::Eof);
+                return None;
             }
 
             let num_buffers = 10;
@@ -81,7 +77,7 @@ impl WordReader {
         // if after we've attempted to read in more content from the file,
         // there are still no words...
         if self.str_slices.is_empty() {
-            return Err(FileStatus::Eof);
+            return None;
         }
 
         // if we make it here, we return the next word
@@ -89,57 +85,84 @@ impl WordReader {
             let (ptr, len, position) = self.str_slices.pop_front().unwrap();
             let slice = slice::from_raw_parts(ptr, len);
             self.curr_slice = Some((ptr, len, position.clone()));
-            return Ok((str::from_utf8(slice).unwrap(), position));
+            return Some((str::from_utf8(slice).unwrap(), position));
         };
     }
 
-    pub(super) fn curr_word(&mut self) -> Result<(&str, Cursor), FileStatus> {
+    pub(super) fn curr_word(&mut self) -> Option<(&str, Cursor)> {
         match &self.curr_slice {
             Some(slice) => unsafe {
                 let (ptr, len, position) = slice.clone();
                 let slice = slice::from_raw_parts(ptr, len);
-                Ok((str::from_utf8(slice).unwrap(), position))
+                return Some((str::from_utf8(slice).unwrap(), position));
             },
-            None => Err(FileStatus::Eof),
+            None => None,
         }
     }
 }
 
-fn previous_symbol(level: u32) -> Option<BacktraceSymbol> {
-    let (trace, curr_file, curr_line) = (Backtrace::new(), file!(), line!());
-    let frames = trace.frames();
-    frames
-        .iter()
-        .flat_map(BacktraceFrame::symbols)
-        .skip_while(|s| {
-            s.filename()
-                .map(|p| !p.ends_with(curr_file))
-                .unwrap_or(true)
-                || s.lineno() != Some(curr_line)
+macro_rules! next_word {
+    ($word_reader:ident) => {
+        $word_reader.next_word().ok_or(()).map_err(|_| {
+            format!(
+                "Error near {}:{}. Did not expect to reach end of file here.",
+                file!(),
+                line!()
+            )
         })
-        .nth(1 + level as usize)
-        .cloned()
+    };
 }
 
-impl From<FileStatus> for String {
-    fn from(f: FileStatus) -> String {
-        let sym = previous_symbol(1);
-        let filename = sym
-            .as_ref()
-            .and_then(BacktraceSymbol::filename)
-            .map_or(None, |path| path.to_str())
-            .unwrap_or("(Couldn't determine filename)");
-        let lineno = sym
-            .as_ref()
-            .and_then(BacktraceSymbol::lineno)
-            .map_or(None, |path| Some(path.to_string()))
-            .unwrap_or("(Couldn't determine line number)".to_string());
-
-        match f {
-            FileStatus::Eof => format!(
-                "Error near {filename}:{lineno} \
-                 No more words left in vcd file."
-            ),
-        }
-    }
+macro_rules! curr_word {
+    ($word_reader:ident) => {
+        $word_reader.curr_word().ok_or(()).map_err(|_| {
+            format!(
+                "Error near {}:{}. A call to curr_word! shouldn't fail unless next_word has not yet been invoked.",
+                file!(),
+                line!()
+            )
+        })
+    };
 }
+
+pub(super) use curr_word;
+pub(super) use next_word;
+
+// fn previous_symbol(level: u32) -> Option<BacktraceSymbol> {
+//     let (trace, curr_file, curr_line) = (Backtrace::new(), file!(), line!());
+//     let frames = trace.frames();
+//     frames
+//         .iter()
+//         .flat_map(BacktraceFrame::symbols)
+//         .skip_while(|s| {
+//             s.filename()
+//                 .map(|p| !p.ends_with(curr_file))
+//                 .unwrap_or(true)
+//                 || s.lineno() != Some(curr_line)
+//         })
+//         .nth(1 + level as usize)
+//         .cloned()
+// }
+
+// impl From<FileStatus> for String {
+//     fn from(f: FileStatus) -> String {
+//         let sym = previous_symbol(1);
+//         let filename = sym
+//             .as_ref()
+//             .and_then(BacktraceSymbol::filename)
+//             .map_or(None, |path| path.to_str())
+//             .unwrap_or("(Couldn't determine filename)");
+//         let lineno = sym
+//             .as_ref()
+//             .and_then(BacktraceSymbol::lineno)
+//             .map_or(None, |path| Some(path.to_string()))
+//             .unwrap_or("(Couldn't determine line number)".to_string());
+
+//         match f {
+//             FileStatus::Eof => format!(
+//                 "Error near {filename}:{lineno} \
+//                  No more words left in vcd file."
+//             ),
+//         }
+//     }
+// }

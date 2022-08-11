@@ -87,7 +87,13 @@ pub(super) struct Scope {
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata: Metadata,
+    // since we only need to store values when there is an actual change
+    // in the timeline, we keep a vector that stores the time at which an
+    // event occurs. Time t is always stored as the minimum length sequence
+    // of u8.
     pub timeline: Vec<u8>,
+    // we need to keep track of where a given time t sequence of u8 begins
+    // and ends in the timeline vector.
     pub timeline_markers: Vec<StartIdx>,
     pub(super) all_signals: Vec<Signal>,
     pub(super) all_scopes: Vec<Scope>,
