@@ -37,7 +37,7 @@ slower.
 
 | Software | Time(s) | Memory(MB) |
 |----------|---------|------------|
-| FastWave | 15.09   | 267.3      |
+| FastWave | ~15.09  | 267.3      |
 | GtkWave  | ~30     | 89.8       |
 
 
