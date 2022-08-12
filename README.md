@@ -2,25 +2,26 @@ Copyright - Yehowshua Immanuel
 
 # A High performance, VCD Parser written in Rust
 
-## Current Features
+# Current Features
 
-FastWave currently offers highly robust error(at least on the sample 
-VCD files in this repository) handling which GTKWave doesn't have. For
-eample, selecting the ``UTILIZATON_ENABLED`` after opening 
-[test2x2_regex22_string1.vcd](./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd),
-(one of the sample xilinx vcd test files) in GtkWave, will crash GtkWave since
-this signal is malformed. FastWave on the otherhand simply informs you the
-signal is malformed.
+ - Robust Error Handling
+   
+   FastWave currently offers highly robust error handling(at least on the sample 
+   VCD files in this repository) which GTKWave doesn't have. For
+   example, selecting the ``UTILIZATON_ENABLED`` signal after opening 
+   [test2x2_regex22_string1.vcd](./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd)
+   (one of the sample xilinx vcd test files) in GtkWave, will crash GtkWave since
+   this signal is malformed. FastWave on the otherhand simply notes that the
+   signal is malformed.
 
-## Performance
+# Performance
 
-### Methods
-Below is a table of performance comparisons on a large 3.04GB VCD file
-that can be found 
+## Methods
+I have been testing performance on a 3.04GB VCD file that can be found 
 [here](https://drive.google.com/file/d/1pfm2qo2l8fGTHHJ8TLrg1vSGaV_TUbp2/view?usp=sharing).
 
-For getting the GtkWave results, I fired up GtkWave, clicke on 
-``File``->``Open New Window``, and selected the large VCD file.
+For getting the GtkWave results, I fired up GtkWave, clicked on 
+``File``->``Open New Window``, and selected the VCD file linked to above.
 I started my stopwatch as soon as I pressed enter to beging loading the VCD
 file, and stopped my stopwatch once the GtkWave titlebar reached 100%.
    
@@ -32,7 +33,7 @@ I noticed that when running FastWave in the VsCode terminal as opposed
 to the MacOS system terminal or the Lapce terminal, FastWave is notably
 slower.
 
-### Results
+## Results
 
 | Software | Time(s) | Memory(MB) |
 |----------|---------|------------|
@@ -44,7 +45,7 @@ slower.
 Unable to handle VCD files that have signals with more than 
 2^32 - 1 = 4,294,967,295 deltas/changes.
 
-## Running
+# Running
 
 This repository comes with several smaller VCD files emitted from
 various EDA tools. If you want a larger VCD file, grab one from
