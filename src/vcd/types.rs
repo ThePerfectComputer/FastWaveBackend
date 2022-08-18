@@ -1,4 +1,6 @@
+use super::utilities::{ordered_binary_lookup_u8, LookupErrors};
 use chrono::prelude::*;
+use num::{BigUint, Zero};
 
 #[derive(Debug)]
 pub(super) struct Version(pub String);
@@ -70,6 +72,26 @@ pub(super) enum Signal {
         name: String,
         signal_alias: SignalIdx,
     },
+}
+
+#[derive(Debug)]
+pub(super) enum TimelineQueryResults {
+    BigUint(BigUint),
+    String(String),
+}
+
+impl Scope {
+    pub(super) fn query_value(&self, time: TimelineIdx) -> Result<TimelineQueryResults, String> {
+        // match
+        // assert
+        // ordered_binary_lookup_u8(
+        //     &value_sequence_as_bytes_u8,
+        //     4,
+        //     &timeline_cursors,
+        //     TimelineIdx(scrubbing_cursor),
+        // );
+        Ok(TimelineQueryResults::String("".to_string()))
+    }
 }
 
 #[derive(Debug)]

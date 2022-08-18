@@ -37,7 +37,7 @@ slower.
 
 | Software | Time(s) | Memory(MB) |
 |----------|---------|------------|
-| FastWave | ~15.09  | 267.3      |
+| FastWave | ~27.30  | 1100+      |
 | GtkWave  | ~30     | 89.8       |
 
 
@@ -67,7 +67,10 @@ Here's a command to test on a malformed VCD:
 
 # TODO
 
-## Features
+## Features and Other
+ - [ ] add timeline value scanner code
+ - [ ] test against large waveform directly within SpinalHDL
+ - [ ] (a bit of work) consolidate error messages in validation phase
  - [ ] be explicit with imports, remove exports as possible
        once FastWave is known to be fairly stable.
  - [ ] do a read through all the code
@@ -87,6 +90,9 @@ Here's a command to test on a malformed VCD:
    - [ ] search for any unwraps or any direct vectors indexing
  - [ ] Handle TODOs
  - [ ] Remove debug code/comments.
+
+## Documentation
+ - [ ] Document indexing structure with diagram and possibly include the rational
 
 ## Marketing
  - [ ] Send survey to community 

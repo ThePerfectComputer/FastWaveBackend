@@ -12,5 +12,5 @@ debug = 1
 num = "0.4"
 clap = { version = "3.1.8", features = ["derive"] }
 chrono = "0.4"
+# TODO : remove itertools once date parser is reworked.
 itertools = "0.10.3"
-backtrace = "0.3"

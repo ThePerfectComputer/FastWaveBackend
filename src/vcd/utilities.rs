@@ -1,7 +1,5 @@
 use super::*;
 
-use std::cmp::Ordering;
-
 #[derive(Debug)]
 pub(super) enum BinaryParserErrTypes {
     XValue,
@@ -77,61 +75,105 @@ pub(super) fn binary_str_to_vec_u8(binary_str: &str) -> Result<Vec<u8>, BinaryPa
     Ok(vec_u8)
 }
 
-// TODO : modify ordered_binary_lookup to support VCD timeline lookup
-// and return time in signature
-fn compare_strs(a: &str, b: &str) -> Ordering {
-    // choose the smaller of the two indices
-    let upper_bound = if a.len() > b.len() { b.len() } else { a.len() };
-    let a_as_bytes = a.as_bytes();
-    let b_as_bytes = b.as_bytes();
+use num::{BigUint, Zero};
 
-    for i in 0..upper_bound {
-        let a_byte = a_as_bytes[i];
-        let b_byte = b_as_bytes[i];
-        if a_byte > b_byte {
-            return Ordering::Greater;
-        }
-        if b_byte > a_byte {
-            return Ordering::Less;
-        }
-    }
-
-    if a.len() > b.len() {
-        return Ordering::Greater;
-    }
-
-    if a.len() < b.len() {
-        return Ordering::Less;
-    }
-
-    return Ordering::Equal;
+#[derive(Debug)]
+pub(super) enum LookupErrors {
+    PreTimeline {
+        desired_time: TimelineIdx,
+        timeline_start_time: TimelineIdx,
+    },
+    EmptyTimeline,
+    TimelineNotMultiple,
+    OrderingFailure,
 }
 
-fn ordered_binary_lookup(map: &Vec<(String, SignalIdx)>, key: &str) -> Result<SignalIdx, String> {
-    let mut upper_idx = map.len() - 1;
-    let mut lower_idx = 0usize;
+pub(super) fn ordered_binary_lookup_u8(
+    value_sequence_as_bytes: &Vec<u8>,
+    bytes_per_value: usize,
+    timeline_cursors: &Vec<TimelineIdx>,
+    desired_time: TimelineIdx,
+) -> Result<BigUint, LookupErrors> {
+    // timeline must not be empty
+    if timeline_cursors.is_empty() {
+        return Err(LookupErrors::EmptyTimeline);
+    }
 
+    // assertion that value_sequence is a proper multiple of
+    // timeline_markers
+    if value_sequence_as_bytes.len() != (timeline_cursors.len() * bytes_per_value) {
+        return Err(LookupErrors::TimelineNotMultiple);
+    }
+
+    let TimelineIdx(desired_time) = desired_time;
+
+    // check if we're requesting a value that occurs before the recorded
+    // start of the timeline
+    let TimelineIdx(timeline_start_time) = timeline_cursors.first().unwrap();
+    if desired_time < *timeline_start_time {
+        return Err(LookupErrors::PreTimeline {
+            desired_time: TimelineIdx(desired_time),
+            timeline_start_time: TimelineIdx(*timeline_start_time),
+        });
+    }
+
+    let mut lower_idx = 0usize;
+    let mut upper_idx = timeline_cursors.len() - 1;
+
+    // check if we're requesting a value that occurs beyond the end of the timeline,
+    // if so, return the last value in this timeline
+    let TimelineIdx(timeline_end_time) = timeline_cursors.last().unwrap();
+    if desired_time > *timeline_end_time {
+        let range = (value_sequence_as_bytes.len() - bytes_per_value)..;
+        let value_by_bytes = &value_sequence_as_bytes[range];
+        let value = BigUint::from_bytes_le(value_by_bytes);
+
+        return Ok(value);
+    }
+
+    // This while loop is the meat of the lookup. Performance is log2(n),
+    // where n is the number of events on the timeline.
+    // We can assume that by the time we get here, that the desired_time
+    // is an event that occurs on the timeline, given that we handle any events
+    // occuring after or before the recorded tiimeline in the code above.
     while lower_idx <= upper_idx {
         let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
-        let (str_val, signal_idx) = map.get(mid_idx).unwrap();
-        let ordering = compare_strs(key, str_val.as_str());
+        let TimelineIdx(curr_time) = timeline_cursors[mid_idx];
+        let ordering = curr_time.cmp(&desired_time);
 
         match ordering {
-            Ordering::Less => {
-                upper_idx = mid_idx - 1;
-            }
-            Ordering::Equal => {
-                return Ok(*signal_idx);
-            }
-            Ordering::Greater => {
+            std::cmp::Ordering::Less => {
                 lower_idx = mid_idx + 1;
+            }
+            std::cmp::Ordering::Equal => {
+                let u8_timeline_start_idx = mid_idx * bytes_per_value;
+                let u8_timeline_end_idx = u8_timeline_start_idx + bytes_per_value;
+                let range = u8_timeline_start_idx..u8_timeline_end_idx;
+                let value_by_bytes = &value_sequence_as_bytes[range];
+                let value = BigUint::from_bytes_le(value_by_bytes);
+                return Ok(value);
+            }
+            std::cmp::Ordering::Greater => {
+                upper_idx = mid_idx - 1;
             }
         }
     }
 
-    return Err(format!(
-        "Error near {}:{}. Unable to find key: `{key}` in the map.",
-        file!(),
-        line!()
-    ));
+    let idx = lower_idx - 1;
+    let TimelineIdx(left_time) = timeline_cursors[idx];
+    let TimelineIdx(right_time) = timeline_cursors[idx + 1];
+
+    let ordered_left = left_time < desired_time;
+    let ordered_right = desired_time < right_time;
+    if !(ordered_left && ordered_right) {
+        return Err(LookupErrors::OrderingFailure);
+    }
+
+    let u8_timeline_start_idx = idx * bytes_per_value;
+    let u8_timeline_end_idx = u8_timeline_start_idx + bytes_per_value;
+    let range = u8_timeline_start_idx..u8_timeline_end_idx;
+    let value_by_bytes = &value_sequence_as_bytes[range];
+    let value = BigUint::from_bytes_le(value_by_bytes);
+
+    return Ok(value);
 }

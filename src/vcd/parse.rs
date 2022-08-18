@@ -1,4 +1,4 @@
-use num::BigInt;
+use num::BigUint;
 use std::collections::HashMap;
 use std::fs::File;
 

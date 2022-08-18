@@ -15,7 +15,7 @@ pub(super) fn parse_events<'a>(
             break;
         };
 
-        let (word, cursor) = next_word!(word_reader)?;
+        let (word, cursor) = next_word.unwrap();
         let Cursor(Line(_), Word(word_in_line_idx)) = cursor;
         // we only want to match on the first word in a line
         if word_in_line_idx != 1 {
@@ -26,14 +26,14 @@ pub(super) fn parse_events<'a>(
             "#" => {
                 let value = &word[1..];
                 let (f, l) = (file!(), line!());
-                let value = BigInt::parse_bytes(value.as_bytes(), 10)
+                let value = BigUint::parse_bytes(value.as_bytes(), 10)
                     .ok_or(())
                     .map_err(|_| {
                         format!(
                             "Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}"
                         )
                     })?;
-                let (_, mut value) = value.to_bytes_le();
+                let mut value = value.to_bytes_le();
                 // TODO : u32 helps with less memory, but should ideally likely be
                 // configurable.
                 let (f, l) = (file!(), line!());

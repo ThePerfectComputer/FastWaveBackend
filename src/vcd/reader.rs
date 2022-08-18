@@ -5,8 +5,6 @@ use std::io::prelude::*;
 use std::slice;
 use std::str;
 
-use backtrace::{Backtrace, BacktraceFrame, BacktraceSymbol};
-
 #[derive(Debug, Clone)]
 pub(super) struct Line(pub(super) usize);
 #[derive(Debug, Clone)]
