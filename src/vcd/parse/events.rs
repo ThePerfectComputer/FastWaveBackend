@@ -191,7 +191,7 @@ pub(super) fn parse_events<'a>(
                             // so that we end up storing all values
                             // of a particular signal in a consistent
                             // amount of bytes
-                            let bytes_required = signal.bytes_required()?;
+                            let bytes_required = Signal::bytes_required(num_bits, name)?;
 
                             while curr_num_bytes < bytes_required {
                                 // TODO: remove once library is known to be stable

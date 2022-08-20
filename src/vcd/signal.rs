@@ -92,93 +92,20 @@ impl Signal {
             )),
         }
     }
-    // pub(super) fn try_dereference_alias_mut<'a>(
-    //     &'a self,
-    //     signals: &'a mut Vec<Signal>,
-    // ) -> Result<&mut Signal, String> {
-    //     // dereference a signal if we need to and return a signal, else return
-    //     // the signal itself
-    //     let signal = match self {
-    //         Signal::Data {
-    //             name,
-    //             sig_type,
-    //             signal_error,
-    //             num_bits,
-    //             self_idx,
-    //             ..
-    //         } => {
-    //             let SignalIdx(idx) = self_idx;
-    //             signals.get(*idx).unwrap()
-    //         }
-    //         Signal::Alias { name, signal_alias } => {
-    //             let SignalIdx(idx) = signal_alias;
-    //             signals.get(*idx).unwrap()
-    //         }
-    //     };
-    //     match signal {
-    //         Signal::Data { .. } => Ok(signal),
-    //         Signal::Alias { .. } => Err(format!(
-    //             "Error near {}:{}. A signal alias shouldn't \
-    //              point to a signal alias.",
-    //             file!(),
-    //             line!()
-    //         )),
-    //     }
-    // }
-    pub(super) fn bytes_required(&self) -> Result<u8, String> {
-        match self {
-            Signal::Data {
-                name,
-                sig_type,
-                signal_error,
-                num_bits,
-                ..
-            } => {
-                let num_bits = num_bits.ok_or_else(|| {
-                    format!("Error near {}:{}. num_bits empty.", file!(), line!())
-                })?;
-                let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
-                let bytes_required = u8::try_from(bytes_required).map_err(|_| {
-                    format!(
-                        "Error near {}:{}. Signal {name} of length num_bits requires \
+    pub(super) fn bytes_required(num_bits: &Option<u16>, name: &String) -> Result<u8, String> {
+        let num_bits = num_bits
+            .ok_or_else(|| format!("Error near {}:{}. num_bits empty.", file!(), line!()))?;
+        let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
+        let bytes_required = u8::try_from(bytes_required).map_err(|_| {
+            format!(
+                "Error near {}:{}. Signal {name} of length num_bits requires \
                         {bytes_required} > 256 bytes.",
-                        file!(),
-                        line!()
-                    )
-                })?;
-                Ok(bytes_required)
-            }
-            Signal::Alias { name, signal_alias } => {
-                let msg = format!(
-                    "Error near {}:{}. Bytes required should not be called on the signal alias {name}",
-                    file!(),
-                    line!()
-                );
-                Err(msg)
-            }
-        }
-        // let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
+                file!(),
+                line!()
+            )
+        })?;
+        Ok(bytes_required)
     }
-    // fn u8_tmstmp_to_biguint(&self, idx: usize) -> BigUint {
-    //     // let lsb_idx = self.
-    //     match self {
-    //         Signal::Data {
-    //             name,
-    //             sig_type,
-    //             signal_error,
-    //             num_bits,
-    //             self_idx,
-    //             nums_encoded_as_fixed_width_le_u8,
-    //             string_vals,
-    //             lsb_indxs_of_num_tmstmp_vals_on_tmln,
-    //             byte_len_of_num_tmstmp_vals_on_tmln,
-    //             lsb_indxs_of_string_tmstmp_vals_on_tmln,
-    //             byte_len_of_string_tmstmp_vals_on_tmln,
-    //             scope_parent,
-    //         } => {}
-    //     }
-    //     BigUint::zero()
-    // }
     pub(super) fn query_value(&self, time: BigUint) -> Result<TimelineQueryResults, String> {
         // match
         // assert

@@ -61,10 +61,10 @@ pub struct VCD {
 
 impl VCD {
     /// We take in a Signal and attempt to dereference that signal if it is of
-    /// variant Signal::Alias. If it is of variant Signal::Alias and points to
-    /// another alias, that's an error. Otherwise, we return the Signal::Data
-    /// pointed to by the Signal::Alias.
-    /// If the Signal is of varint Signal::Data, then that can be returned directly.
+    /// variant ``Signal::Alias``. If it is of variant ``Signal::Alias`` and points to
+    /// another alias, that's an error. Otherwise, we return the ``Signal::Data``
+    /// pointed to by the ``Signal::Alias``.
+    /// If the Signal is of varint ``Signal::Data``, then that can be returned directly.
     pub(super) fn try_dereference_alias_mut<'a>(
         &'a mut self,
         idx: &SignalIdx,

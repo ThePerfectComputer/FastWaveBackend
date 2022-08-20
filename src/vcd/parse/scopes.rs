@@ -58,6 +58,14 @@ pub(super) fn parse_var<'a>(
         | SigType::Tri1
         | SigType::Time => {
             let no_bits = word.parse::<usize>().expect(parse_err.as_str());
+            let no_bits = u16::try_from(no_bits).map_err(|_| {
+                format!(
+                    "Error near {}:{} while parsing vcd file at {cursor:?}. \
+                     This signal has {no_bits} > 2^16 - 1 bits.",
+                    file!(),
+                    line!()
+                )
+            })?;
             Some(no_bits)
         }
         // for strings, we don't really care what the number of bits is
@@ -100,7 +108,7 @@ pub(super) fn parse_var<'a>(
                 name: full_signal_name,
                 sig_type: var_type,
                 signal_error: None,
-                num_bits: None,
+                num_bits: no_bits,
                 self_idx: signal_idx,
                 nums_encoded_as_fixed_width_le_u8: vec![],
                 string_vals: vec![],
