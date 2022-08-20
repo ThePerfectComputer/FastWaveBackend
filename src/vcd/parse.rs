@@ -31,11 +31,10 @@ pub fn parse_vcd(file: File) -> Result<VCD, String> {
     // after we parse metadata, we form the VCD object
     let mut vcd = VCD {
         metadata: header,
-        timeline: vec![],
-        timeline_markers: vec![],
+        tmstmps_encoded_as_u8s: vec![],
         all_signals: vec![],
         all_scopes: vec![],
-        scope_roots: vec![],
+        root_scopes: vec![],
     };
 
     parse_scopes(&mut word_gen, &mut vcd, &mut signal_map)?;

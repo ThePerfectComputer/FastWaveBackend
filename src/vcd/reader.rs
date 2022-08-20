@@ -115,7 +115,8 @@ macro_rules! curr_word {
     ($word_reader:ident) => {
         $word_reader.curr_word().ok_or(()).map_err(|_| {
             format!(
-                "Error near {}:{}. A call to curr_word! shouldn't fail unless next_word has not yet been invoked.",
+                "Error near {}:{}. A call to curr_word! shouldn't \
+                 fail unless next_word has not yet been invoked.",
                 file!(),
                 line!()
             )

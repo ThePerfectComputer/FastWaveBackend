@@ -1,6 +1,5 @@
-use super::utilities::{ordered_binary_lookup_u8, LookupErrors};
+use super::Signal;
 use chrono::prelude::*;
-use num::{BigUint, Zero};
 
 #[derive(Debug)]
 pub(super) struct Version(pub String);
@@ -23,76 +22,12 @@ pub(super) struct Metadata {
     pub(super) timescale: (Option<u32>, Timescale),
 }
 
+// We do a lot of arena allocation in this codebase.
 #[derive(Debug, Copy, Clone)]
 pub(super) struct ScopeIdx(pub(super) usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(super) struct SignalIdx(pub(super) usize);
-
-#[derive(Debug, Copy, Clone)]
-pub(super) struct TimelineIdx(pub(super) u32);
-
-#[derive(Debug, Copy, Clone)]
-pub struct StartIdx(pub(super) u32);
-
-#[derive(Debug)]
-pub(super) enum SigType {
-    Integer,
-    Parameter,
-    Real,
-    Reg,
-    Str,
-    Wire,
-    Tri1,
-    Time,
-}
-
-#[derive(Debug)]
-pub(super) enum Signal {
-    Data {
-        name: String,
-        sig_type: SigType,
-        // I've seen a 0 bit signal parameter in a xilinx
-        // simulation before that gets assigned 1 bit values.
-        // I consider this to be bad behavior. We capture such
-        // errors in the following type.
-        signal_error: Option<String>,
-        num_bits: Option<usize>,
-        // TODO : may be able to remove self_idx
-        self_idx: SignalIdx,
-        // we could encounter a mix of pure values and strings
-        // for the same signal timeline
-        u8_timeline: Vec<u8>,
-        u8_timeline_markers: Vec<TimelineIdx>,
-        string_timeline: Vec<String>,
-        string_timeline_markers: Vec<TimelineIdx>,
-        scope_parent: ScopeIdx,
-    },
-    Alias {
-        name: String,
-        signal_alias: SignalIdx,
-    },
-}
-
-#[derive(Debug)]
-pub(super) enum TimelineQueryResults {
-    BigUint(BigUint),
-    String(String),
-}
-
-impl Scope {
-    pub(super) fn query_value(&self, time: TimelineIdx) -> Result<TimelineQueryResults, String> {
-        // match
-        // assert
-        // ordered_binary_lookup_u8(
-        //     &value_sequence_as_bytes_u8,
-        //     4,
-        //     &timeline_cursors,
-        //     TimelineIdx(scrubbing_cursor),
-        // );
-        Ok(TimelineQueryResults::String("".to_string()))
-    }
-}
 
 #[derive(Debug)]
 pub(super) struct Scope {
@@ -105,82 +40,63 @@ pub(super) struct Scope {
     pub(super) child_scopes: Vec<ScopeIdx>,
 }
 
-// TODO: document how timeline is represented
 #[derive(Debug)]
 pub struct VCD {
     pub(super) metadata: Metadata,
-    // since we only need to store values when there is an actual change
+    // Since we only need to store values when there is an actual change
     // in the timeline, we keep a vector that stores the time at which an
-    // event occurs. Time t is always stored as the minimum length sequence
+    // event occurs. Time t is always stored/encoded as the minimum length sequence
     // of u8.
-    pub timeline: Vec<u8>,
-    // we need to keep track of where a given time t sequence of u8 begins
-    // and ends in the timeline vector.
-    pub timeline_markers: Vec<StartIdx>,
+    // We essentially fill ``tmstmps_encoded_as_u8s`` with BigUints converted
+    // to sequences of little endian u8s.
+    // It is up to the signals to keep track of the start/stop indices in the
+    // vector of u8s that constitute a timestamp value. Signals don't have to
+    // keep track of all timestamp values, a given signal only needs to keep
+    // track of the timestamps at which the given signal value changes.
+    pub tmstmps_encoded_as_u8s: Vec<u8>,
     pub(super) all_signals: Vec<Signal>,
     pub(super) all_scopes: Vec<Scope>,
-    pub(super) scope_roots: Vec<ScopeIdx>,
+    pub(super) root_scopes: Vec<ScopeIdx>,
 }
 
 impl VCD {
-    // TODO : make this a generic traversal function that applies specified
-    // functions upon encountering scopes and signals
-    fn print_scope_tree(&self, root_scope_idx: ScopeIdx, depth: usize) {
-        let all_scopes = &self.all_scopes;
-        let all_signals = &self.all_signals;
+    /// We take in a Signal and attempt to dereference that signal if it is of
+    /// variant Signal::Alias. If it is of variant Signal::Alias and points to
+    /// another alias, that's an error. Otherwise, we return the Signal::Data
+    /// pointed to by the Signal::Alias.
+    /// If the Signal is of varint Signal::Data, then that can be returned directly.
+    pub(super) fn try_dereference_alias_mut<'a>(
+        &'a mut self,
+        idx: &SignalIdx,
+    ) -> Result<&'a mut Signal, String> {
+        // get the signal pointed to be SignalIdx from the arena
+        let SignalIdx(idx) = idx;
+        let signal = &self.all_signals[*idx];
 
-        let indent = " ".repeat(depth * 4);
-        let ScopeIdx(root_scope_idx) = root_scope_idx;
-        let root_scope = &all_scopes[root_scope_idx];
-        let root_scope_name = &root_scope.name;
+        // dereference signal if Signal::Alias, or keep idx if Signal::Data
+        let signal_idx = match signal {
+            Signal::Data {
+                name,
+                sig_type,
+                signal_error,
+                num_bits,
+                self_idx,
+                ..
+            } => *self_idx,
+            Signal::Alias { name, signal_alias } => *signal_alias,
+        };
 
-        println!("{indent}scope: {root_scope_name}");
-
-        for SignalIdx(ref signal_idx) in &root_scope.child_signals {
-            let child_signal = &all_signals[*signal_idx];
-            let name = match child_signal {
-                Signal::Data { name, .. } => name,
-                Signal::Alias { name, .. } => name,
-            };
-            println!("{indent} - sig: {name}")
+        // Should now  point to Signal::Data variant, or else there's an error
+        let SignalIdx(idx) = signal_idx;
+        let signal = self.all_signals.get_mut(idx).unwrap();
+        match signal {
+            Signal::Data { .. } => Ok(signal),
+            Signal::Alias { .. } => Err(format!(
+                "Error near {}:{}. A signal alias shouldn't \
+                 point to a signal alias.",
+                file!(),
+                line!()
+            )),
         }
-        println!();
-
-        for scope_idx in &root_scope.child_scopes {
-            self.print_scope_tree(*scope_idx, depth + 1);
-        }
-    }
-
-    pub fn print_scopes(&self) {
-        for scope_root in &self.scope_roots {
-            self.print_scope_tree(*scope_root, 0);
-        }
-    }
-
-    pub fn print_longest_signal(&self) {
-        let mut idx = 0usize;
-        let mut max_len = 0usize;
-        let mut signal_name = String::new();
-
-        for signal in &self.all_signals {
-            match signal {
-                Signal::Alias { .. } => {}
-                Signal::Data {
-                    name,
-                    self_idx,
-                    u8_timeline,
-                    ..
-                } => {
-                    if u8_timeline.len() > max_len {
-                        max_len = u8_timeline.len();
-                        let SignalIdx(idx_usize) = self_idx;
-                        idx = *idx_usize;
-                        signal_name = name.clone();
-                    }
-                }
-            }
-        }
-
-        dbg!((idx, max_len, signal_name));
     }
 }

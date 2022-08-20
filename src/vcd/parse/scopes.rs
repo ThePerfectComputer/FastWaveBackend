@@ -100,12 +100,14 @@ pub(super) fn parse_var<'a>(
                 name: full_signal_name,
                 sig_type: var_type,
                 signal_error: None,
-                num_bits: no_bits,
+                num_bits: None,
                 self_idx: signal_idx,
-                u8_timeline: vec![],
-                u8_timeline_markers: vec![],
-                string_timeline: vec![],
-                string_timeline_markers: vec![],
+                nums_encoded_as_fixed_width_le_u8: vec![],
+                string_vals: vec![],
+                lsb_indxs_of_num_tmstmp_vals_on_tmln: vec![],
+                byte_len_of_num_tmstmp_vals_on_tmln: vec![],
+                lsb_indxs_of_string_tmstmp_vals_on_tmln: vec![],
+                byte_len_of_string_tmstmp_vals_on_tmln: vec![],
                 scope_parent: parent_scope_idx,
             };
             (signal, signal_idx)
@@ -155,7 +157,7 @@ fn parse_orphaned_vars<'a>(
             child_signals: vec![],
             child_scopes: vec![],
         });
-        vcd.scope_roots.push(scope_idx);
+        vcd.root_scopes.push(scope_idx);
     }
 
     // we can go ahead and parse the current var as we've already encountered
@@ -224,7 +226,7 @@ fn parse_scopes_inner<'a>(
             let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx).unwrap();
             parent_scope.child_scopes.push(curr_scope_idx);
         }
-        None => vcd.scope_roots.push(curr_scope_idx),
+        None => vcd.root_scopes.push(curr_scope_idx),
     }
 
     // add this scope to list of existing scopes
