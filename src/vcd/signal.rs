@@ -68,30 +68,25 @@ pub(super) enum Signal {
     },
 }
 
+#[derive(Debug)]
+pub(super) enum LookupErrors {
+    PreTimeline {
+        desired_time: BigUint,
+        timeline_start_time: BigUint,
+    },
+    EmptyTimeline,
+    TimelineNotMultiple,
+    OrderingFailure,
+    PointsToAlias,
+    NoNumBits,
+    Other(String),
+}
+
+// these are thin type aliases primarily to make code more readable later on
+type TimeStamp = BigUint;
+type SignalValNum = BigUint;
+
 impl Signal {
-    pub(super) fn try_dereference_alias<'a>(
-        &'a self,
-        signals: &'a Vec<Signal>,
-    ) -> Result<&Signal, String> {
-        // dereference a signal if we need to and return a signal, else return
-        // the signal itself
-        let signal = match self {
-            Signal::Data { .. } => self,
-            Signal::Alias { name, signal_alias } => {
-                let SignalIdx(idx) = signal_alias;
-                &signals[*idx]
-            }
-        };
-        match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
     pub(super) fn bytes_required(num_bits: &Option<u16>, name: &String) -> Result<u8, String> {
         let num_bits = num_bits
             .ok_or_else(|| format!("Error near {}:{}. num_bits empty.", file!(), line!()))?;
@@ -106,15 +101,210 @@ impl Signal {
         })?;
         Ok(bytes_required)
     }
-    pub(super) fn query_value(&self, time: BigUint) -> Result<TimelineQueryResults, String> {
-        // match
-        // assert
-        // ordered_binary_lookup_u8(
-        //     &value_sequence_as_bytes_u8,
-        //     4,
-        //     &timeline_cursors,
-        //     TimelineIdx(scrubbing_cursor),
-        // );
-        Ok(TimelineQueryResults::String("".to_string()))
+    pub fn lookup_time_and_val(
+        &self,
+        idx: usize,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+    ) -> Result<(TimeStamp, SignalValNum), LookupErrors> {
+        let (
+            name,
+            num_bits,
+            nums_encoded_as_fixed_width_le_u8,
+            lsb_indxs_of_num_tmstmp_vals_on_tmln,
+            byte_len_of_num_tmstmp_vals_on_tmln,
+        ) = match self {
+            Signal::Data {
+                name,
+                sig_type,
+                signal_error,
+                num_bits,
+                self_idx,
+                nums_encoded_as_fixed_width_le_u8,
+                string_vals,
+                lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                byte_len_of_num_tmstmp_vals_on_tmln,
+                lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                byte_len_of_string_tmstmp_vals_on_tmln,
+                scope_parent,
+            } => Ok((
+                name,
+                num_bits,
+                nums_encoded_as_fixed_width_le_u8,
+                lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                byte_len_of_num_tmstmp_vals_on_tmln,
+            )),
+            Signal::Alias { name, signal_alias } => Err(LookupErrors::PointsToAlias),
+        }?;
+
+        // get index
+        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) = lsb_indxs_of_num_tmstmp_vals_on_tmln[idx];
+        let timestamp_idx = timestamp_idx as usize;
+
+        // form timestamp
+        let byte_len = byte_len_of_num_tmstmp_vals_on_tmln[timestamp_idx] as usize;
+        let timestamp = &tmstmps_encoded_as_u8s[timestamp_idx..(timestamp_idx + byte_len)];
+        let timestamp = BigUint::from_bytes_le(timestamp);
+
+        // get signal value
+        let bytes_per_value =
+            Signal::bytes_required(num_bits, name).map_err(|e| LookupErrors::Other(e))?;
+        let bytes_per_value = byte_len as usize;
+        let start_idx = idx * bytes_per_value;
+        let end_idx = (idx + 1) * bytes_per_value;
+        let signal_val = &nums_encoded_as_fixed_width_le_u8[start_idx..end_idx];
+        let signal_val = BigUint::from_bytes_le(signal_val);
+
+        Ok((timestamp, signal_val))
     }
+    // pub(super) fn query_num_val_on_tmln(
+    //     &self,
+    //     //(REMOVE THIS COMMENT)below is from self
+    //     nums_encoded_as_fixed_width_le_u8: &Vec<u8>,
+    //     lsb_indxs_of_num_tmstmp_vals_on_tmln: &Vec<LsbIdxOfTmstmpValOnTmln>,
+    //     tmstmps_encoded_as_u8s: &Vec<u8>,
+    //     all_signals: &Vec<Signal>,
+    //     //(REMOVE THIS COMMENT)below is from self
+    //     // TODO : should this be usize?
+    //     desired_time: BigUint,
+    // ) -> Result<BigUint, LookupErrors> {
+    //     let signal_idx = match self {
+    //         Self::Data {
+    //             name,
+    //             sig_type,
+    //             signal_error,
+    //             num_bits,
+    //             self_idx,
+    //             ..
+    //         } => {
+    //             let SignalIdx(idx) = self_idx;
+    //             *idx
+    //         }
+    //         Self::Alias { name, signal_alias } => {
+    //             let SignalIdx(idx) = signal_alias;
+    //             *idx
+    //         }
+    //     };
+
+    //     let (
+    //         nums_encoded_as_fixed_width_le_u8,
+    //         lsb_indxs_of_num_tmstmp_vals_on_tmln,
+    //         tmstmps_encoded_as_u8s,
+    //         num_bits,
+    //         name,
+    //     ) = match all_signals[signal_idx] {
+    //         Signal::Data {
+    //             name,
+    //             sig_type,
+    //             signal_error,
+    //             num_bits,
+    //             self_idx,
+    //             ref nums_encoded_as_fixed_width_le_u8,
+    //             string_vals,
+    //             ref lsb_indxs_of_num_tmstmp_vals_on_tmln,
+    //             byte_len_of_num_tmstmp_vals_on_tmln,
+    //             lsb_indxs_of_string_tmstmp_vals_on_tmln,
+    //             byte_len_of_string_tmstmp_vals_on_tmln,
+    //             scope_parent,
+    //         } => {
+    //             if num_bits.is_none() {
+    //                 return Err(LookupErrors::NoNumBits);
+    //             }
+    //             Ok((
+    //                 nums_encoded_as_fixed_width_le_u8,
+    //                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
+    //                 tmstmps_encoded_as_u8s,
+    //                 num_bits,
+    //                 name,
+    //             ))
+    //         }
+    //         Signal::Alias { name, signal_alias } => Err(LookupErrors::PointsToAlias),
+    //     }?;
+    //     // this signal should at least have some events, otherwise, trying to index into
+    //     // an empty vector later on would fail
+    //     if lsb_indxs_of_num_tmstmp_vals_on_tmln.is_empty() {
+    //         return Err(LookupErrors::EmptyTimeline);
+    //     }
+
+    //     // assertion that value_sequence is a proper multiple of
+    //     // timeline_markers
+    //     let bytes_required =
+    //         Signal::bytes_required(&num_bits, &name).map_err(|arg| LookupErrors::Other(arg))?;
+    //     if lsb_indxs_of_num_tmstmp_vals_on_tmln.len()
+    //         != (nums_encoded_as_fixed_width_le_u8.len() * bytes_required as usize)
+    //     {
+    //         return Err(LookupErrors::TimelineNotMultiple);
+    //     }
+
+    //     // let TimelineIdx(desired_time) = desired_time;
+
+    //     // check if we're requesting a value that occurs before the recorded
+    //     // start of the timeline
+    //     let TimelineIdx(timeline_start_time) = timeline_cursors.first().unwrap();
+    //     if desired_time < *timeline_start_time {
+    //         return Err(LookupErrors::PreTimeline {
+    //             desired_time: TimelineIdx(desired_time),
+    //             timeline_start_time: TimelineIdx(*timeline_start_time),
+    //         });
+    //     }
+
+    //     let mut lower_idx = 0usize;
+    //     let mut upper_idx = timeline_cursors.len() - 1;
+
+    //     // check if we're requesting a value that occurs beyond the end of the timeline,
+    //     // if so, return the last value in this timeline
+    //     let TimelineIdx(timeline_end_time) = timeline_cursors.last().unwrap();
+    //     if desired_time > *timeline_end_time {
+    //         let range = (value_sequence_as_bytes.len() - bytes_per_value)..;
+    //         let value_by_bytes = &value_sequence_as_bytes[range];
+    //         let value = BigUint::from_bytes_le(value_by_bytes);
+
+    //         return Ok(value);
+    //     }
+
+    //     // This while loop is the meat of the lookup. Performance is log2(n),
+    //     // where n is the number of events on the timeline.
+    //     // We can assume that by the time we get here, that the desired_time
+    //     // is an event that occurs on the timeline, given that we handle any events
+    //     // occuring after or before the recorded tiimeline in the code above.
+    //     while lower_idx <= upper_idx {
+    //         let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
+    //         let TimelineIdx(curr_time) = timeline_cursors[mid_idx];
+    //         let ordering = curr_time.cmp(&desired_time);
+
+    //         match ordering {
+    //             std::cmp::Ordering::Less => {
+    //                 lower_idx = mid_idx + 1;
+    //             }
+    //             std::cmp::Ordering::Equal => {
+    //                 let u8_timeline_start_idx = mid_idx * bytes_per_value;
+    //                 let u8_timeline_end_idx = u8_timeline_start_idx + bytes_per_value;
+    //                 let range = u8_timeline_start_idx..u8_timeline_end_idx;
+    //                 let value_by_bytes = &value_sequence_as_bytes[range];
+    //                 let value = BigUint::from_bytes_le(value_by_bytes);
+    //                 return Ok(value);
+    //             }
+    //             std::cmp::Ordering::Greater => {
+    //                 upper_idx = mid_idx - 1;
+    //             }
+    //         }
+    //     }
+
+    //     let idx = lower_idx - 1;
+    //     let TimelineIdx(left_time) = timeline_cursors[idx];
+    //     let TimelineIdx(right_time) = timeline_cursors[idx + 1];
+
+    //     let ordered_left = left_time < desired_time;
+    //     let ordered_right = desired_time < right_time;
+    //     if !(ordered_left && ordered_right) {
+    //         return Err(LookupErrors::OrderingFailure);
+    //     }
+
+    //     let u8_timeline_start_idx = idx * bytes_per_value;
+    //     let u8_timeline_end_idx = u8_timeline_start_idx + bytes_per_value;
+    //     let range = u8_timeline_start_idx..u8_timeline_end_idx;
+    //     let value_by_bytes = &value_sequence_as_bytes[range];
+    //     let value = BigUint::from_bytes_le(value_by_bytes);
+
+    //     return Ok(value);
+    // }
 }
