@@ -199,7 +199,7 @@ pub(super) fn parse_events<'a>(
                                 nums_encoded_as_fixed_width_le_u8.push(0u8);
                                 curr_num_bytes += 1;
                             }
-                            byte_len_of_num_tmstmp_vals_on_tmln.push(curr_num_bytes);
+                            byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                             Ok(())
                         }
                     }
@@ -279,7 +279,7 @@ pub(super) fn parse_events<'a>(
                         nums_encoded_as_fixed_width_le_u8.push(0u8);
                         lsb_indxs_of_num_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
-                        byte_len_of_num_tmstmp_vals_on_tmln.push(1u8);
+                        byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                         Ok(())
                     }
                     Signal::Alias { .. } => {
@@ -357,7 +357,7 @@ pub(super) fn parse_events<'a>(
                         nums_encoded_as_fixed_width_le_u8.push(1u8);
                         lsb_indxs_of_num_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
-                        byte_len_of_num_tmstmp_vals_on_tmln.push(1u8);
+                        byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                         Ok(())
                     }
                     Signal::Alias { .. } => {
@@ -396,7 +396,7 @@ pub(super) fn parse_events<'a>(
                         nums_encoded_as_fixed_width_le_u8: _,
                         string_vals,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln: _,
-                        byte_len_of_num_tmstmp_vals_on_tmln: _,
+                        byte_len_of_num_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                         ..
                     } => {
@@ -438,6 +438,7 @@ pub(super) fn parse_events<'a>(
                         string_vals.push(val);
                         lsb_indxs_of_string_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
+                        byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                         Ok(())
                     }
                     Signal::Alias { .. } => {
