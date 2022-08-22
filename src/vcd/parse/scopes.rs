@@ -48,8 +48,8 @@ pub(super) fn parse_var<'a>(
     let parse_err = format!("failed to parse as usize on {cursor:?}");
 
     // $var parameter 3 a IDLE $end
-    //                ^ - no_bits
-    let no_bits = match var_type {
+    //                ^ - num_bits
+    let num_bits = match var_type {
         SigType::Integer
         | SigType::Parameter
         | SigType::Real
@@ -57,16 +57,16 @@ pub(super) fn parse_var<'a>(
         | SigType::Wire
         | SigType::Tri1
         | SigType::Time => {
-            let no_bits = word.parse::<usize>().expect(parse_err.as_str());
-            let no_bits = u16::try_from(no_bits).map_err(|_| {
+            let num_bits = word.parse::<usize>().expect(parse_err.as_str());
+            let num_bits = u16::try_from(num_bits).map_err(|_| {
                 format!(
                     "Error near {}:{} while parsing vcd file at {cursor:?}. \
-                     This signal has {no_bits} > 2^16 - 1 bits.",
+                     This signal has {num_bits} > 2^16 - 1 bits.",
                     file!(),
                     line!()
                 )
             })?;
-            Some(no_bits)
+            Some(num_bits)
         }
         // for strings, we don't really care what the number of bits is
         _ => None,
@@ -89,8 +89,8 @@ pub(super) fn parse_var<'a>(
     }
     let full_signal_name = full_signal_name.join(" ");
 
-    let num_bytes = if no_bits.is_some() {
-        let bytes_required = Signal::bytes_required(no_bits.unwrap(), &full_signal_name)?;
+    let num_bytes = if num_bits.is_some() {
+        let bytes_required = Signal::bytes_required(num_bits.unwrap(), &full_signal_name)?;
         Some(bytes_required)
     } else {
         None
@@ -115,7 +115,7 @@ pub(super) fn parse_var<'a>(
                 name: full_signal_name,
                 sig_type: var_type,
                 signal_error: None,
-                num_bits: no_bits,
+                num_bits: num_bits,
                 num_bytes: num_bytes,
                 self_idx: signal_idx,
                 nums_encoded_as_fixed_width_le_u8: vec![],
