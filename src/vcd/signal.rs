@@ -1,4 +1,3 @@
-// use super::utilities::{ordered_binary_lookup_u8, LookupErrors};
 use super::{ScopeIdx, SignalIdx};
 use num::{BigUint, Zero};
 
@@ -70,7 +69,7 @@ pub(super) enum Signal {
 }
 
 #[derive(Debug)]
-pub(super) enum LookupErrors {
+pub(super) enum SignalErrors {
     PreTimeline {
         desired_time: BigUint,
         timeline_start_time: BigUint,
@@ -105,7 +104,7 @@ impl Signal {
         &self,
         idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
-    ) -> Result<(TimeStamp, SignalValNum), LookupErrors> {
+    ) -> Result<(TimeStamp, SignalValNum), SignalErrors> {
         let (
             num_bytes,
             nums_encoded_as_fixed_width_le_u8,
@@ -124,7 +123,7 @@ impl Signal {
                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
                 byte_len_of_num_tmstmp_vals_on_tmln,
             )),
-            Signal::Alias { .. } => Err(LookupErrors::PointsToAlias),
+            Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
         }?;
 
         // get index
@@ -137,7 +136,7 @@ impl Signal {
         let timestamp = BigUint::from_bytes_le(timestamp);
 
         // get signal value
-        let bytes_per_value = num_bytes.ok_or_else(|| LookupErrors::NoNumBytes)?;
+        let bytes_per_value = num_bytes.ok_or_else(|| SignalErrors::NoNumBytes)?;
         let bytes_per_value = bytes_per_value as usize;
         let start_idx = idx * bytes_per_value;
         let end_idx = (idx + 1) * bytes_per_value;
@@ -156,7 +155,7 @@ impl Signal {
     //     //(REMOVE THIS COMMENT)below is from self
     //     // TODO : should this be usize?
     //     desired_time: BigUint,
-    // ) -> Result<BigUint, LookupErrors> {
+    // ) -> Result<BigUint, SignalErrors> {
     //     let signal_idx = match self {
     //         Self::Data {
     //             name,
@@ -197,7 +196,7 @@ impl Signal {
     //             scope_parent,
     //         } => {
     //             if num_bits.is_none() {
-    //                 return Err(LookupErrors::NoNumBits);
+    //                 return Err(SignalErrors::NoNumBits);
     //             }
     //             Ok((
     //                 nums_encoded_as_fixed_width_le_u8,
@@ -207,22 +206,22 @@ impl Signal {
     //                 name,
     //             ))
     //         }
-    //         Signal::Alias { name, signal_alias } => Err(LookupErrors::PointsToAlias),
+    //         Signal::Alias { name, signal_alias } => Err(SignalErrors::PointsToAlias),
     //     }?;
     //     // this signal should at least have some events, otherwise, trying to index into
     //     // an empty vector later on would fail
     //     if lsb_indxs_of_num_tmstmp_vals_on_tmln.is_empty() {
-    //         return Err(LookupErrors::EmptyTimeline);
+    //         return Err(SignalErrors::EmptyTimeline);
     //     }
 
     //     // assertion that value_sequence is a proper multiple of
     //     // timeline_markers
     //     let bytes_required =
-    //         Signal::bytes_required(&num_bits, &name).map_err(|arg| LookupErrors::Other(arg))?;
+    //         Signal::bytes_required(&num_bits, &name).map_err(|arg| SignalErrors::Other(arg))?;
     //     if lsb_indxs_of_num_tmstmp_vals_on_tmln.len()
     //         != (nums_encoded_as_fixed_width_le_u8.len() * bytes_required as usize)
     //     {
-    //         return Err(LookupErrors::TimelineNotMultiple);
+    //         return Err(SignalErrors::TimelineNotMultiple);
     //     }
 
     //     // let TimelineIdx(desired_time) = desired_time;
@@ -231,7 +230,7 @@ impl Signal {
     //     // start of the timeline
     //     let TimelineIdx(timeline_start_time) = timeline_cursors.first().unwrap();
     //     if desired_time < *timeline_start_time {
-    //         return Err(LookupErrors::PreTimeline {
+    //         return Err(SignalErrors::PreTimeline {
     //             desired_time: TimelineIdx(desired_time),
     //             timeline_start_time: TimelineIdx(*timeline_start_time),
     //         });
@@ -286,7 +285,7 @@ impl Signal {
     //     let ordered_left = left_time < desired_time;
     //     let ordered_right = desired_time < right_time;
     //     if !(ordered_left && ordered_right) {
-    //         return Err(LookupErrors::OrderingFailure);
+    //         return Err(SignalErrors::OrderingFailure);
     //     }
 
     //     let u8_timeline_start_idx = idx * bytes_per_value;
