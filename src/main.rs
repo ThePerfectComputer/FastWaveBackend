@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
     let now = Instant::now();
 
     let file = File::open(&args.path)?;
-    let vcd = parse_vcd(file).unwrap();
+    parse_vcd(file).unwrap();
 
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);

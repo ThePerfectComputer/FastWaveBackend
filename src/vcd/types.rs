@@ -75,14 +75,7 @@ impl VCD {
 
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
-            Signal::Data {
-                name,
-                sig_type,
-                signal_error,
-                num_bits,
-                self_idx,
-                ..
-            } => *self_idx,
+            Signal::Data { self_idx, .. } => *self_idx,
             Signal::Alias { name, signal_alias } => *signal_alias,
         };
 
@@ -109,14 +102,7 @@ impl VCD {
 
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
-            Signal::Data {
-                name,
-                sig_type,
-                signal_error,
-                num_bits,
-                self_idx,
-                ..
-            } => *self_idx,
+            Signal::Data { self_idx, .. } => *self_idx,
             Signal::Alias { name, signal_alias } => *signal_alias,
         };
 

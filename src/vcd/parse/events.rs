@@ -122,14 +122,12 @@ pub(super) fn parse_events<'a>(
                         ref mut signal_error,
                         num_bits,
                         num_bytes,
-                        self_idx,
                         nums_encoded_as_fixed_width_le_u8,
                         string_vals,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                        byte_len_of_string_tmstmp_vals_on_tmln,
-                        scope_parent,
+                        ..
                     } => {
                         // we've already identified in a prior loop iteration that the signal has
                         // an error
@@ -233,10 +231,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        num_bytes: _,
-                        self_idx: _,
                         nums_encoded_as_fixed_width_le_u8,
-                        string_vals: _,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
                         ..
@@ -311,10 +306,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        num_bytes: _,
-                        self_idx: _,
                         nums_encoded_as_fixed_width_le_u8,
-                        string_vals: _,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
                         ..
@@ -391,11 +383,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        num_bytes: _,
-                        self_idx: _,
-                        nums_encoded_as_fixed_width_le_u8: _,
                         string_vals,
-                        lsb_indxs_of_num_tmstmp_vals_on_tmln: _,
                         byte_len_of_num_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                         ..

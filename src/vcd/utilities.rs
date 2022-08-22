@@ -1,5 +1,3 @@
-use super::*;
-
 #[derive(Debug)]
 pub(super) enum BinaryParserErrTypes {
     XValue,
