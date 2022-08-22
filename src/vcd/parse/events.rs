@@ -121,6 +121,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
+                        num_bytes,
                         self_idx,
                         nums_encoded_as_fixed_width_le_u8,
                         string_vals,
@@ -190,7 +191,9 @@ pub(super) fn parse_events<'a>(
                             // so that we end up storing all values
                             // of a particular signal in a consistent
                             // amount of bytes
-                            let bytes_required = Signal::bytes_required(num_bits, name)?;
+                            let bytes_required = num_bytes.ok_or_else(|| {
+                                format!("Error near {}:{}. num_bytes empty.", file!(), line!())
+                            })?;
 
                             while curr_num_bytes < bytes_required {
                                 nums_encoded_as_fixed_width_le_u8.push(0u8);
@@ -230,14 +233,13 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        self_idx,
+                        num_bytes: _,
+                        self_idx: _,
                         nums_encoded_as_fixed_width_le_u8,
-                        string_vals,
+                        string_vals: _,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
-                        lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                        byte_len_of_string_tmstmp_vals_on_tmln,
-                        scope_parent,
+                        ..
                     } => {
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {
@@ -309,14 +311,13 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        self_idx,
+                        num_bytes: _,
+                        self_idx: _,
                         nums_encoded_as_fixed_width_le_u8,
-                        string_vals,
+                        string_vals: _,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
-                        lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                        byte_len_of_string_tmstmp_vals_on_tmln,
-                        scope_parent,
+                        ..
                     } => {
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {
@@ -390,14 +391,14 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
-                        self_idx,
-                        nums_encoded_as_fixed_width_le_u8,
+                        num_bytes: _,
+                        self_idx: _,
+                        nums_encoded_as_fixed_width_le_u8: _,
                         string_vals,
-                        lsb_indxs_of_num_tmstmp_vals_on_tmln,
-                        byte_len_of_num_tmstmp_vals_on_tmln,
+                        lsb_indxs_of_num_tmstmp_vals_on_tmln: _,
+                        byte_len_of_num_tmstmp_vals_on_tmln: _,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                        byte_len_of_string_tmstmp_vals_on_tmln,
-                        scope_parent,
+                        ..
                     } => {
                         // if this is a bad signal, go ahead and skip it
                         if signal_error.is_some() {

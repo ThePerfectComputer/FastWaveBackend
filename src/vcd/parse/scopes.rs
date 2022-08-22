@@ -89,6 +89,13 @@ pub(super) fn parse_var<'a>(
     }
     let full_signal_name = full_signal_name.join(" ");
 
+    let num_bytes = if no_bits.is_some() {
+        let bytes_required = Signal::bytes_required(no_bits.unwrap(), &full_signal_name)?;
+        Some(bytes_required)
+    } else {
+        None
+    };
+
     // Is the current variable an alias to a signal already encountered?
     // if so, handle ref_signal_idx accordingly, if not, add signal to hash
     // map
@@ -109,6 +116,7 @@ pub(super) fn parse_var<'a>(
                 sig_type: var_type,
                 signal_error: None,
                 num_bits: no_bits,
+                num_bytes: num_bytes,
                 self_idx: signal_idx,
                 nums_encoded_as_fixed_width_le_u8: vec![],
                 string_vals: vec![],

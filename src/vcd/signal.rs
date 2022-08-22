@@ -36,6 +36,7 @@ pub(super) enum Signal {
         // errors in the following type:
         signal_error: Option<String>,
         num_bits: Option<u16>,
+        num_bytes: Option<u8>,
         // TODO : may be able to remove self_idx
         self_idx: SignalIdx,
         // A signal may take on a new value and hold that value
@@ -79,6 +80,7 @@ pub(super) enum LookupErrors {
     OrderingFailure,
     PointsToAlias,
     NoNumBits,
+    NoNumBytes,
     Other(String),
 }
 
@@ -87,9 +89,7 @@ type TimeStamp = BigUint;
 type SignalValNum = BigUint;
 
 impl Signal {
-    pub(super) fn bytes_required(num_bits: &Option<u16>, name: &String) -> Result<u8, String> {
-        let num_bits = num_bits
-            .ok_or_else(|| format!("Error near {}:{}. num_bits empty.", file!(), line!()))?;
+    pub(super) fn bytes_required(num_bits: u16, name: &String) -> Result<u8, String> {
         let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
         let bytes_required = u8::try_from(bytes_required).map_err(|_| {
             format!(
@@ -107,33 +107,24 @@ impl Signal {
         tmstmps_encoded_as_u8s: &Vec<u8>,
     ) -> Result<(TimeStamp, SignalValNum), LookupErrors> {
         let (
-            name,
-            num_bits,
+            num_bytes,
             nums_encoded_as_fixed_width_le_u8,
             lsb_indxs_of_num_tmstmp_vals_on_tmln,
             byte_len_of_num_tmstmp_vals_on_tmln,
         ) = match self {
             Signal::Data {
-                name,
-                sig_type,
-                signal_error,
-                num_bits,
-                self_idx,
+                num_bytes,
                 nums_encoded_as_fixed_width_le_u8,
-                string_vals,
                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
                 byte_len_of_num_tmstmp_vals_on_tmln,
-                lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                byte_len_of_string_tmstmp_vals_on_tmln,
-                scope_parent,
+                ..
             } => Ok((
-                name,
-                num_bits,
+                num_bytes,
                 nums_encoded_as_fixed_width_le_u8,
                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
                 byte_len_of_num_tmstmp_vals_on_tmln,
             )),
-            Signal::Alias { name, signal_alias } => Err(LookupErrors::PointsToAlias),
+            Signal::Alias { .. } => Err(LookupErrors::PointsToAlias),
         }?;
 
         // get index
@@ -146,9 +137,8 @@ impl Signal {
         let timestamp = BigUint::from_bytes_le(timestamp);
 
         // get signal value
-        let bytes_per_value =
-            Signal::bytes_required(num_bits, name).map_err(|e| LookupErrors::Other(e))?;
-        let bytes_per_value = byte_len as usize;
+        let bytes_per_value = num_bytes.ok_or_else(|| LookupErrors::NoNumBytes)?;
+        let bytes_per_value = bytes_per_value as usize;
         let start_idx = idx * bytes_per_value;
         let end_idx = (idx + 1) * bytes_per_value;
         let signal_val = &nums_encoded_as_fixed_width_le_u8[start_idx..end_idx];
