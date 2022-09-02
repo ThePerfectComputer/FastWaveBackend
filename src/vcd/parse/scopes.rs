@@ -122,8 +122,8 @@ pub(super) fn parse_var<'a>(
                 string_vals: vec![],
                 lsb_indxs_of_num_tmstmp_vals_on_tmln: vec![],
                 byte_len_of_num_tmstmp_vals_on_tmln: vec![],
-                lsb_indxs_of_string_tmstmp_vals_on_tmln: vec![],
                 byte_len_of_string_tmstmp_vals_on_tmln: vec![],
+                lsb_indxs_of_string_tmstmp_vals_on_tmln: vec![],
                 scope_parent: parent_scope_idx,
             };
             (signal, signal_idx)

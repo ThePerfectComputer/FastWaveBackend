@@ -1,3 +1,5 @@
+use num::Zero;
+
 use super::*;
 
 pub(super) fn parse_events<'a>(
@@ -7,6 +9,7 @@ pub(super) fn parse_events<'a>(
 ) -> Result<(), String> {
     let mut curr_tmstmp_lsb_idx = 0u32;
     let mut curr_tmstmp_len_u8 = 0u8;
+    let mut curr_time = BigUint::zero();
     loop {
         let next_word = word_reader.next_word();
 
@@ -35,6 +38,7 @@ pub(super) fn parse_events<'a>(
                             "Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}"
                         )
                     })?;
+                curr_time = value.clone();
                 let mut value = value.to_bytes_le();
                 // TODO : u32 helps with less memory, but should ideally likely be
                 // configurable.
@@ -45,16 +49,15 @@ pub(super) fn parse_events<'a>(
                         line!()
                     )
                 })?;
-                vcd.tmstmps_encoded_as_u8s.append(&mut value);
                 curr_tmstmp_lsb_idx =
                     u32::try_from(vcd.tmstmps_encoded_as_u8s.len()).map_err(|_| {
                         format!(
-                            "Error near {}:{}. Failed to convert from usize to u8.",
+                            "Error near {}:{}. Failed to convert from usize to u32.",
                             file!(),
                             line!()
                         )
                     })?;
-                // curr_tmstmp_lsb_idx = vcd.tmstmps_encoded_as_u8s.len();
+                vcd.tmstmps_encoded_as_u8s.append(&mut value);
             }
 
             // handle the case of an n bit signal whose value must be parsed
@@ -110,10 +113,6 @@ pub(super) fn parse_events<'a>(
                 })?;
 
                 let signal = vcd.try_dereference_alias_mut(signal_idx)?;
-
-                // we may have to dereference a signal if it's pointing at an alias
-                // let signal = &vcd.all_signals[*signal_idx];
-                // let signal = signal.try_dereference_alias_mut(&vcd.all_signals)?;
 
                 match signal {
                     Signal::Data {
@@ -172,6 +171,19 @@ pub(super) fn parse_events<'a>(
                             string_vals.push(value_string);
                             Ok(())
                         } else {
+                            // timestamp stuff
+                            lsb_indxs_of_num_tmstmp_vals_on_tmln
+                                .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
+                            byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+
+                            // value stuff
+                            // we may need to zero extend values
+                            // so that we end up storing all values
+                            // of a particular signal in a consistent
+                            // amount of bytes
+                            let bytes_required = num_bytes.ok_or_else(|| {
+                                format!("Error near {}:{}. num_bytes empty.", file!(), line!())
+                            })?;
                             let mut curr_num_bytes =
                                 u8::try_from(value_u8.len()).map_err(|_| {
                                     format!(
@@ -182,22 +194,12 @@ pub(super) fn parse_events<'a>(
                                         line!()
                                     )
                                 })?;
-                            lsb_indxs_of_num_tmstmp_vals_on_tmln
-                                .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
 
-                            // we may need to zero extend values
-                            // so that we end up storing all values
-                            // of a particular signal in a consistent
-                            // amount of bytes
-                            let bytes_required = num_bytes.ok_or_else(|| {
-                                format!("Error near {}:{}. num_bytes empty.", file!(), line!())
-                            })?;
-
+                            nums_encoded_as_fixed_width_le_u8.append(&mut value_u8);
                             while curr_num_bytes < bytes_required {
                                 nums_encoded_as_fixed_width_le_u8.push(0u8);
                                 curr_num_bytes += 1;
                             }
-                            byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                             Ok(())
                         }
                     }
@@ -231,6 +233,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
+                        num_bytes,
                         nums_encoded_as_fixed_width_le_u8,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
@@ -271,10 +274,25 @@ pub(super) fn parse_events<'a>(
                                 Err(msg)?;
                             }
                         };
-                        nums_encoded_as_fixed_width_le_u8.push(0u8);
+                        // timestamp stuff
                         lsb_indxs_of_num_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
                         byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+
+                        // value stuff
+                        // we may need to zero extend values
+                        // so that we end up storing all values
+                        // of a particular signal in a consistent
+                        // amount of bytes
+                        let bytes_required = num_bytes.ok_or_else(|| {
+                            format!("Error near {}:{}. num_bytes empty.", file!(), line!())
+                        })?;
+                        nums_encoded_as_fixed_width_le_u8.push(0u8);
+                        let mut curr_num_bytes = 1;
+                        while curr_num_bytes < bytes_required {
+                            nums_encoded_as_fixed_width_le_u8.push(0u8);
+                            curr_num_bytes += 1;
+                        }
                         Ok(())
                     }
                     Signal::Alias { .. } => {
@@ -306,6 +324,7 @@ pub(super) fn parse_events<'a>(
                         sig_type,
                         ref mut signal_error,
                         num_bits,
+                        num_bytes,
                         nums_encoded_as_fixed_width_le_u8,
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
@@ -346,10 +365,25 @@ pub(super) fn parse_events<'a>(
                                 Err(msg)?;
                             }
                         };
-                        nums_encoded_as_fixed_width_le_u8.push(1u8);
+                        // timestamp stuff
                         lsb_indxs_of_num_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
                         byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+
+                        // value stuff
+                        // we may need to zero extend values
+                        // so that we end up storing all values
+                        // of a particular signal in a consistent
+                        // amount of bytes
+                        let bytes_required = num_bytes.ok_or_else(|| {
+                            format!("Error near {}:{}. num_bytes empty.", file!(), line!())
+                        })?;
+                        nums_encoded_as_fixed_width_le_u8.push(1u8);
+                        let mut curr_num_bytes = 1;
+                        while curr_num_bytes < bytes_required {
+                            nums_encoded_as_fixed_width_le_u8.push(0u8);
+                            curr_num_bytes += 1;
+                        }
                         Ok(())
                     }
                     Signal::Alias { .. } => {
@@ -362,7 +396,7 @@ pub(super) fn parse_events<'a>(
                 }?;
             }
 
-            // other one bit cases
+            // // other one bit cases
             "x" | "X" | "z" | "Z" | "u" | "U" => {
                 let val = word.to_string();
                 // lokup signal idx
@@ -385,6 +419,7 @@ pub(super) fn parse_events<'a>(
                         num_bits,
                         string_vals,
                         byte_len_of_num_tmstmp_vals_on_tmln,
+                        byte_len_of_string_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                         ..
                     } => {
@@ -423,10 +458,14 @@ pub(super) fn parse_events<'a>(
                                 Err(msg)?;
                             }
                         };
-                        string_vals.push(val);
+
+                        // record timestamp at which this event occurs
                         lsb_indxs_of_string_tmstmp_vals_on_tmln
                             .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
-                        byte_len_of_num_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+                        byte_len_of_string_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+
+                        // record value
+                        string_vals.push(val);
                         Ok(())
                     }
                     Signal::Alias { .. } => {

@@ -58,8 +58,8 @@ pub(super) enum Signal {
         // a particular timestamp is composed of.
         lsb_indxs_of_num_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
-        lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_string_tmstmp_vals_on_tmln: Vec<u8>,
+        lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         scope_parent: ScopeIdx,
     },
     Alias {
@@ -76,9 +76,12 @@ pub(super) enum SignalErrors {
     },
     EmptyTimeline,
     TimelineNotMultiple,
-    OrderingFailure,
+    OrderingFailure {
+        lhs_time: BigUint,
+        mid_time: BigUint,
+        rhs_time: BigUint,
+    },
     PointsToAlias,
-    NoNumBits,
     NoNumBytes,
     Other(String),
 }
@@ -100,9 +103,9 @@ impl Signal {
         })?;
         Ok(bytes_required)
     }
-    pub fn lookup_time_and_val(
+    pub(super) fn lookup_time_and_val(
         &self,
-        idx: usize,
+        event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
     ) -> Result<(TimeStamp, SignalValNum), SignalErrors> {
         let (
@@ -127,25 +130,26 @@ impl Signal {
         }?;
 
         // get index
-        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) = lsb_indxs_of_num_tmstmp_vals_on_tmln[idx];
+        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) =
+            lsb_indxs_of_num_tmstmp_vals_on_tmln[event_idx];
         let timestamp_idx = timestamp_idx as usize;
 
         // form timestamp
-        let byte_len = byte_len_of_num_tmstmp_vals_on_tmln[timestamp_idx] as usize;
+        let byte_len = byte_len_of_num_tmstmp_vals_on_tmln[event_idx] as usize;
         let timestamp = &tmstmps_encoded_as_u8s[timestamp_idx..(timestamp_idx + byte_len)];
         let timestamp = BigUint::from_bytes_le(timestamp);
 
         // get signal value
         let bytes_per_value = num_bytes.ok_or_else(|| SignalErrors::NoNumBytes)?;
         let bytes_per_value = bytes_per_value as usize;
-        let start_idx = idx * bytes_per_value;
-        let end_idx = (idx + 1) * bytes_per_value;
+        let start_idx = event_idx * bytes_per_value;
+        let end_idx = (event_idx + 1) * bytes_per_value;
         let signal_val = &nums_encoded_as_fixed_width_le_u8[start_idx..end_idx];
         let signal_val = BigUint::from_bytes_le(signal_val);
 
         Ok((timestamp, signal_val))
     }
-    pub(super) fn query_num_val_on_tmln(
+    pub fn query_num_val_on_tmln(
         &self,
         desired_time: BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
@@ -199,9 +203,13 @@ impl Signal {
                 line!()
             ))
         })?;
-        if lsb_indxs_of_num_tmstmp_vals_on_tmln.len()
-            != (nums_encoded_as_fixed_width_le_u8.len() * bytes_required as usize)
+        if nums_encoded_as_fixed_width_le_u8.len()
+            != (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
         {
+            dbg!((
+                nums_encoded_as_fixed_width_le_u8.len(),
+                (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
+            ));
             return Err(SignalErrors::TimelineNotMultiple);
         }
 
@@ -252,12 +260,16 @@ impl Signal {
 
         let (left_time, left_val) =
             self.lookup_time_and_val(lower_idx - 1, tmstmps_encoded_as_u8s)?;
-        let (right_time, _) = self.lookup_time_and_val(lower_idx - 1, tmstmps_encoded_as_u8s)?;
+        let (right_time, _) = self.lookup_time_and_val(lower_idx, tmstmps_encoded_as_u8s)?;
 
         let ordered_left = left_time < desired_time;
         let ordered_right = desired_time < right_time;
         if !(ordered_left && ordered_right) {
-            return Err(SignalErrors::OrderingFailure);
+            return Err(SignalErrors::OrderingFailure {
+                lhs_time: left_time,
+                mid_time: desired_time,
+                rhs_time: right_time,
+            });
         }
 
         return Ok(left_val);
