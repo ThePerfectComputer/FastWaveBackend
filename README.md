@@ -68,14 +68,20 @@ Here's a command to test on a malformed VCD:
 # TODO
 
 ## Features and Other
- - [ ] add timeline value scanner code
- - [ ] test against large waveform directly within SpinalHDL
+ - [ ] add documenting comments
+ - [ ] add lz4 compression support and compare memory perf before and after
+ - [ ] add string support for timeline value scanner
+ - [ ] test against large waveforms from the
+       [verilog-vcd-parser](https://github.com/ben-marshall/verilog-vcd-parser)
+       tool
  - [ ] (a bit of work) consolidate error messages in validation phase
+ - [ ] once the access patterns of the GUI frontend are well understood,
+       create specific functions and restrict as many types to private
+       as possible
  - [ ] be explicit with imports, remove exports as possible
        once FastWave is known to be fairly stable.
- - [ ] do a read through all the code
-    - make contents of src/types.rs public as necessary.
  - [ ] Print out git commit or release number.
+ - [ ] do a read through all the code - look for uneeded code
  - [ ] Take a look at GTKWave parser to compare efficiency.
  - [ ] Move part of the performance section to another markdown file.
 

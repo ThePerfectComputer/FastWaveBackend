@@ -7,7 +7,7 @@ use num::{BigUint, Zero};
 pub struct LsbIdxOfTmstmpValOnTmln(pub(super) u32);
 
 #[derive(Debug)]
-pub(super) enum SigType {
+pub enum SigType {
     Integer,
     Parameter,
     Real,
@@ -25,7 +25,7 @@ pub(super) enum TimelineQueryResults {
 }
 
 #[derive(Debug)]
-pub(super) enum Signal {
+pub enum Signal {
     Data {
         name: String,
         sig_type: SigType,
@@ -69,7 +69,7 @@ pub(super) enum Signal {
 }
 
 #[derive(Debug)]
-pub(super) enum SignalErrors {
+pub enum SignalErrors {
     PreTimeline {
         desired_time: BigUint,
         timeline_start_time: BigUint,

@@ -4,7 +4,9 @@ use std::fs::File;
 pub mod test;
 
 pub mod vcd;
-use vcd::parse_vcd;
+use vcd::*;
+
+use num::BigUint;
 
 #[derive(Parser)]
 struct Cli {
@@ -20,12 +22,29 @@ fn main() -> std::io::Result<()> {
     let now = Instant::now();
 
     let file = File::open(&args.path)?;
-    parse_vcd(file).unwrap();
+    let vcd = parse_vcd(file).unwrap();
 
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
 
-    // std::thread::sleep(std::time::Duration::from_secs(10));
+    // the following is really only for test-vcd-files/icarus/CPU.vcd
+    // at the moment
+    if args.path.as_os_str().to_str().unwrap() == "test-vcd-files/icarus/CPU.vcd" {
+        let signal = &vcd.all_signals[51];
+        let name = match signal {
+            Signal::Data { name, .. } => name,
+            _ => "ERROR",
+        };
+        let val = signal
+            .query_num_val_on_tmln(
+                BigUint::from(4687u32),
+                &vcd.tmstmps_encoded_as_u8s,
+                &vcd.all_signals,
+            )
+            .unwrap();
+        dbg!(format!("{val:#X}"));
+        dbg!(name);
+    }
 
     Ok(())
 }

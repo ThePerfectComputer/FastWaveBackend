@@ -39,20 +39,6 @@ pub fn parse_vcd(file: File) -> Result<VCD, String> {
 
     parse_scopes(&mut word_gen, &mut vcd, &mut signal_map)?;
     parse_events(&mut word_gen, &mut vcd, &mut signal_map)?;
-    let signal = vcd.try_dereference_alias(signal_map.get("Q").unwrap())?;
-    let name = match signal {
-        Signal::Data { name, .. } => name,
-        _ => "ERROR",
-    };
-    let val = signal
-        .query_num_val_on_tmln(
-            BigUint::from(4687u32),
-            &vcd.tmstmps_encoded_as_u8s,
-            &vcd.all_signals,
-        )
-        .unwrap();
-    dbg!(format!("{val:#X}"));
-    dbg!(name);
 
     Ok(vcd)
 }
@@ -93,8 +79,6 @@ mod tests {
                 dbg!(file_name);
                 vcd.unwrap();
             }
-
-            // assert!(vcd.is_ok());
         }
     }
 }

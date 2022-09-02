@@ -24,10 +24,10 @@ pub(super) struct Metadata {
 
 // We do a lot of arena allocation in this codebase.
 #[derive(Debug, Copy, Clone)]
-pub(super) struct ScopeIdx(pub(super) usize);
+pub struct ScopeIdx(pub(super) usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(super) struct SignalIdx(pub(super) usize);
+pub struct SignalIdx(pub(super) usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
@@ -54,7 +54,7 @@ pub struct VCD {
     // keep track of all timestamp values, a given signal only needs to keep
     // track of the timestamps at which the given signal value changes.
     pub tmstmps_encoded_as_u8s: Vec<u8>,
-    pub(super) all_signals: Vec<Signal>,
+    pub all_signals: Vec<Signal>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
 }

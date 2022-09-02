@@ -8,7 +8,7 @@ mod parse;
 pub use parse::*;
 
 mod signal;
-use signal::*;
+pub use signal::*;
 
 mod utilities;
 use utilities::*;
