@@ -1,4 +1,3 @@
-// use super::utilities::{ordered_binary_lookup_u8, LookupErrors};
 use super::{ScopeIdx, SignalIdx};
 use num::{BigUint, Zero};
 
@@ -36,6 +35,7 @@ pub(super) enum Signal {
         // errors in the following type:
         signal_error: Option<String>,
         num_bits: Option<u16>,
+        num_bytes: Option<u8>,
         // TODO : may be able to remove self_idx
         self_idx: SignalIdx,
         // A signal may take on a new value and hold that value
@@ -58,8 +58,8 @@ pub(super) enum Signal {
         // a particular timestamp is composed of.
         lsb_indxs_of_num_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
-        lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_string_tmstmp_vals_on_tmln: Vec<u8>,
+        lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         scope_parent: ScopeIdx,
     },
     Alias {
@@ -68,33 +68,30 @@ pub(super) enum Signal {
     },
 }
 
+#[derive(Debug)]
+pub(super) enum SignalErrors {
+    PreTimeline {
+        desired_time: BigUint,
+        timeline_start_time: BigUint,
+    },
+    EmptyTimeline,
+    TimelineNotMultiple,
+    OrderingFailure {
+        lhs_time: BigUint,
+        mid_time: BigUint,
+        rhs_time: BigUint,
+    },
+    PointsToAlias,
+    NoNumBytes,
+    Other(String),
+}
+
+// these are thin type aliases primarily to make code more readable later on
+type TimeStamp = BigUint;
+type SignalValNum = BigUint;
+
 impl Signal {
-    pub(super) fn try_dereference_alias<'a>(
-        &'a self,
-        signals: &'a Vec<Signal>,
-    ) -> Result<&Signal, String> {
-        // dereference a signal if we need to and return a signal, else return
-        // the signal itself
-        let signal = match self {
-            Signal::Data { .. } => self,
-            Signal::Alias { name, signal_alias } => {
-                let SignalIdx(idx) = signal_alias;
-                &signals[*idx]
-            }
-        };
-        match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-    pub(super) fn bytes_required(num_bits: &Option<u16>, name: &String) -> Result<u8, String> {
-        let num_bits = num_bits
-            .ok_or_else(|| format!("Error near {}:{}. num_bits empty.", file!(), line!()))?;
+    pub(super) fn bytes_required(num_bits: u16, name: &String) -> Result<u8, String> {
         let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
         let bytes_required = u8::try_from(bytes_required).map_err(|_| {
             format!(
@@ -106,15 +103,175 @@ impl Signal {
         })?;
         Ok(bytes_required)
     }
-    pub(super) fn query_value(&self, time: BigUint) -> Result<TimelineQueryResults, String> {
-        // match
-        // assert
-        // ordered_binary_lookup_u8(
-        //     &value_sequence_as_bytes_u8,
-        //     4,
-        //     &timeline_cursors,
-        //     TimelineIdx(scrubbing_cursor),
-        // );
-        Ok(TimelineQueryResults::String("".to_string()))
+    pub(super) fn lookup_time_and_val(
+        &self,
+        event_idx: usize,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+    ) -> Result<(TimeStamp, SignalValNum), SignalErrors> {
+        let (
+            num_bytes,
+            nums_encoded_as_fixed_width_le_u8,
+            lsb_indxs_of_num_tmstmp_vals_on_tmln,
+            byte_len_of_num_tmstmp_vals_on_tmln,
+        ) = match self {
+            Signal::Data {
+                num_bytes,
+                nums_encoded_as_fixed_width_le_u8,
+                lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                byte_len_of_num_tmstmp_vals_on_tmln,
+                ..
+            } => Ok((
+                num_bytes,
+                nums_encoded_as_fixed_width_le_u8,
+                lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                byte_len_of_num_tmstmp_vals_on_tmln,
+            )),
+            Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+        }?;
+
+        // get index
+        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) =
+            lsb_indxs_of_num_tmstmp_vals_on_tmln[event_idx];
+        let timestamp_idx = timestamp_idx as usize;
+
+        // form timestamp
+        let byte_len = byte_len_of_num_tmstmp_vals_on_tmln[event_idx] as usize;
+        let timestamp = &tmstmps_encoded_as_u8s[timestamp_idx..(timestamp_idx + byte_len)];
+        let timestamp = BigUint::from_bytes_le(timestamp);
+
+        // get signal value
+        let bytes_per_value = num_bytes.ok_or_else(|| SignalErrors::NoNumBytes)?;
+        let bytes_per_value = bytes_per_value as usize;
+        let start_idx = event_idx * bytes_per_value;
+        let end_idx = (event_idx + 1) * bytes_per_value;
+        let signal_val = &nums_encoded_as_fixed_width_le_u8[start_idx..end_idx];
+        let signal_val = BigUint::from_bytes_le(signal_val);
+
+        Ok((timestamp, signal_val))
+    }
+    pub fn query_num_val_on_tmln(
+        &self,
+        desired_time: BigUint,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+        all_signals: &Vec<Signal>,
+    ) -> Result<BigUint, SignalErrors> {
+        let signal_idx = match self {
+            Self::Data { self_idx, .. } => {
+                let SignalIdx(idx) = self_idx;
+                *idx
+            }
+            Self::Alias {
+                name: _,
+                signal_alias,
+            } => {
+                let SignalIdx(idx) = signal_alias;
+                *idx
+            }
+        };
+
+        let (nums_encoded_as_fixed_width_le_u8, lsb_indxs_of_num_tmstmp_vals_on_tmln, num_bytes) =
+            match &all_signals[signal_idx] {
+                Signal::Data {
+                    num_bytes,
+                    ref nums_encoded_as_fixed_width_le_u8,
+                    ref lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                    ..
+                } => {
+                    if num_bytes.is_none() {
+                        return Err(SignalErrors::NoNumBytes);
+                    }
+                    Ok((
+                        nums_encoded_as_fixed_width_le_u8,
+                        lsb_indxs_of_num_tmstmp_vals_on_tmln,
+                        num_bytes,
+                    ))
+                }
+                Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+            }?;
+        // this signal should at least have some events, otherwise, trying to index into
+        // an empty vector later on would fail
+        if lsb_indxs_of_num_tmstmp_vals_on_tmln.is_empty() {
+            return Err(SignalErrors::EmptyTimeline);
+        }
+
+        // assertion that value_sequence is a proper multiple of
+        // timeline_markers
+        let bytes_required = num_bytes.ok_or_else(|| {
+            SignalErrors::Other(format!(
+                "Error near {}:{}. num_bytes empty.",
+                file!(),
+                line!()
+            ))
+        })?;
+        if nums_encoded_as_fixed_width_le_u8.len()
+            != (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
+        {
+            dbg!((
+                nums_encoded_as_fixed_width_le_u8.len(),
+                (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
+            ));
+            return Err(SignalErrors::TimelineNotMultiple);
+        }
+
+        // check if we're requesting a value that occurs before the recorded
+        // start of the timeline
+        let (timeline_start_time, _) = self.lookup_time_and_val(0, tmstmps_encoded_as_u8s)?;
+        if desired_time < timeline_start_time {
+            return Err(SignalErrors::PreTimeline {
+                desired_time: desired_time,
+                timeline_start_time: timeline_start_time,
+            });
+        }
+
+        let mut lower_idx = 0usize;
+        let mut upper_idx = lsb_indxs_of_num_tmstmp_vals_on_tmln.len() - 1;
+        let (timeline_end_time, timeline_end_val) =
+            self.lookup_time_and_val(upper_idx, tmstmps_encoded_as_u8s)?;
+
+        // check if we're requesting a value that occurs beyond the end of the timeline,
+        // if so, return the last value in this timeline
+        if desired_time > timeline_end_time {
+            return Ok(timeline_end_val);
+        }
+
+        // This while loop is the meat of the lookup. Performance is log2(n),
+        // where n is the number of events on the timeline.
+        // We can assume that by the time we get here, that the desired_time
+        // is an event that occurs on the timeline, given that we handle any events
+        // occuring after or before the recorded tiimeline in the code above.
+        while lower_idx <= upper_idx {
+            let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
+            let (curr_time, curr_val) =
+                self.lookup_time_and_val(mid_idx, tmstmps_encoded_as_u8s)?;
+            let ordering = curr_time.cmp(&desired_time);
+
+            match ordering {
+                std::cmp::Ordering::Less => {
+                    lower_idx = mid_idx + 1;
+                }
+                std::cmp::Ordering::Equal => {
+                    return Ok(curr_val);
+                }
+                std::cmp::Ordering::Greater => {
+                    upper_idx = mid_idx - 1;
+                }
+            }
+        }
+
+        let (left_time, left_val) =
+            self.lookup_time_and_val(lower_idx - 1, tmstmps_encoded_as_u8s)?;
+        let (right_time, _) = self.lookup_time_and_val(lower_idx, tmstmps_encoded_as_u8s)?;
+
+        let ordered_left = left_time < desired_time;
+        let ordered_right = desired_time < right_time;
+        if !(ordered_left && ordered_right) {
+            return Err(SignalErrors::OrderingFailure {
+                lhs_time: left_time,
+                mid_time: desired_time,
+                rhs_time: right_time,
+            });
+        }
+
+        return Ok(left_val);
     }
 }

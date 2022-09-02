@@ -75,20 +75,40 @@ impl VCD {
 
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
-            Signal::Data {
-                name,
-                sig_type,
-                signal_error,
-                num_bits,
-                self_idx,
-                ..
-            } => *self_idx,
+            Signal::Data { self_idx, .. } => *self_idx,
             Signal::Alias { name, signal_alias } => *signal_alias,
         };
 
         // Should now  point to Signal::Data variant, or else there's an error
         let SignalIdx(idx) = signal_idx;
         let signal = self.all_signals.get_mut(idx).unwrap();
+        match signal {
+            Signal::Data { .. } => Ok(signal),
+            Signal::Alias { .. } => Err(format!(
+                "Error near {}:{}. A signal alias shouldn't \
+                 point to a signal alias.",
+                file!(),
+                line!()
+            )),
+        }
+    }
+    pub(super) fn try_dereference_alias<'a>(
+        &'a self,
+        idx: &SignalIdx,
+    ) -> Result<&'a Signal, String> {
+        // get the signal pointed to be SignalIdx from the arena
+        let SignalIdx(idx) = idx;
+        let signal = &self.all_signals[*idx];
+
+        // dereference signal if Signal::Alias, or keep idx if Signal::Data
+        let signal_idx = match signal {
+            Signal::Data { self_idx, .. } => *self_idx,
+            Signal::Alias { name, signal_alias } => *signal_alias,
+        };
+
+        // Should now  point to Signal::Data variant, or else there's an error
+        let SignalIdx(idx) = signal_idx;
+        let signal = self.all_signals.get(idx).unwrap();
         match signal {
             Signal::Data { .. } => Ok(signal),
             Signal::Alias { .. } => Err(format!(
