@@ -103,7 +103,45 @@ impl Signal {
         })?;
         Ok(bytes_required)
     }
-    pub(super) fn lookup_time_and_val(
+    pub(super) fn time_and_str_val_at_event_idx(
+        &self,
+        event_idx: usize,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+    ) -> Result<(TimeStamp, &str), SignalErrors> {
+        let (
+            string_vals,
+            lsb_indxs_of_string_tmstmp_vals_on_tmln,
+            byte_len_of_string_tmstmp_vals_on_tmln,
+        ) = match self {
+            Signal::Data {
+                string_vals,
+                lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                byte_len_of_string_tmstmp_vals_on_tmln,
+                ..
+            } => Ok((
+                string_vals,
+                lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                byte_len_of_string_tmstmp_vals_on_tmln,
+            )),
+            Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+        }?;
+
+        // get index
+        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) =
+            lsb_indxs_of_string_tmstmp_vals_on_tmln[event_idx];
+        let timestamp_idx = timestamp_idx as usize;
+
+        // form timestamp
+        let byte_len = byte_len_of_string_tmstmp_vals_on_tmln[event_idx] as usize;
+        let timestamp = &tmstmps_encoded_as_u8s[timestamp_idx..(timestamp_idx + byte_len)];
+        let timestamp = BigUint::from_bytes_le(timestamp);
+
+        // get signal value
+        let signal_val = string_vals[event_idx].as_str();
+
+        Ok((timestamp, signal_val))
+    }
+    pub(super) fn time_and_num_val_at_event_idx(
         &self,
         event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
@@ -215,7 +253,8 @@ impl Signal {
 
         // check if we're requesting a value that occurs before the recorded
         // start of the timeline
-        let (timeline_start_time, _) = self.lookup_time_and_val(0, tmstmps_encoded_as_u8s)?;
+        let (timeline_start_time, _) =
+            self.time_and_num_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
         if desired_time < timeline_start_time {
             return Err(SignalErrors::PreTimeline {
                 desired_time: desired_time,
@@ -226,7 +265,7 @@ impl Signal {
         let mut lower_idx = 0usize;
         let mut upper_idx = lsb_indxs_of_num_tmstmp_vals_on_tmln.len() - 1;
         let (timeline_end_time, timeline_end_val) =
-            self.lookup_time_and_val(upper_idx, tmstmps_encoded_as_u8s)?;
+            self.time_and_num_val_at_event_idx(upper_idx, tmstmps_encoded_as_u8s)?;
 
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
@@ -242,7 +281,7 @@ impl Signal {
         while lower_idx <= upper_idx {
             let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
             let (curr_time, curr_val) =
-                self.lookup_time_and_val(mid_idx, tmstmps_encoded_as_u8s)?;
+                self.time_and_num_val_at_event_idx(mid_idx, tmstmps_encoded_as_u8s)?;
             let ordering = curr_time.cmp(&desired_time);
 
             match ordering {
@@ -259,8 +298,9 @@ impl Signal {
         }
 
         let (left_time, left_val) =
-            self.lookup_time_and_val(lower_idx - 1, tmstmps_encoded_as_u8s)?;
-        let (right_time, _) = self.lookup_time_and_val(lower_idx, tmstmps_encoded_as_u8s)?;
+            self.time_and_num_val_at_event_idx(lower_idx - 1, tmstmps_encoded_as_u8s)?;
+        let (right_time, _) =
+            self.time_and_num_val_at_event_idx(lower_idx, tmstmps_encoded_as_u8s)?;
 
         let ordered_left = left_time < desired_time;
         let ordered_right = desired_time < right_time;
