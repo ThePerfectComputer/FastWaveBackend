@@ -69,7 +69,12 @@ Here's a command to test on a malformed VCD:
 
 ## Features and Other
  - [ ] add documenting comments
+ - [ ] perhaps we should be looking up signal values on the VCD class
+ - [ ] perhaps we should be returning signal trees from the VCD class
  - [ ] add lz4 compression support and compare memory perf before and after
+       - [ ] may need to refactor with allow for get_mut for dynamic
+             compression-decompression for multiple signal structs 
+             at once to allow for multi-threading
  - [ ] add string support for timeline value scanner
  - [ ] test against large waveforms from the
        [verilog-vcd-parser](https://github.com/ben-marshall/verilog-vcd-parser)
@@ -88,6 +93,7 @@ Here's a command to test on a malformed VCD:
 ## Repairs
  - [ ] make a custom date parser for possibly up to 18 different versions(that is, for each possible tool).
  - [ ] Consolidate error messages and add cursors throughout.
+ - [ ] Add file and line to the enum errors.
  - [ ] Fix warnings especially usage and restriction warnings once I'm
        able to successfully parse all sample VCDs.
 
