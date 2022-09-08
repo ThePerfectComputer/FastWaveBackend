@@ -75,7 +75,6 @@ Here's a command to test on a malformed VCD:
        - [ ] may need to refactor with allow for get_mut for dynamic
              compression-decompression for multiple signal structs 
              at once to allow for multi-threading
- - [x] add string support for timeline value scanner
  - [ ] test against large waveforms from the
        [verilog-vcd-parser](https://github.com/ben-marshall/verilog-vcd-parser)
        tool

@@ -6,7 +6,7 @@ pub mod test;
 pub mod vcd;
 use vcd::*;
 
-use num::{BigUint, traits::sign};
+use num::{BigUint};
 
 #[derive(Parser)]
 struct Cli {

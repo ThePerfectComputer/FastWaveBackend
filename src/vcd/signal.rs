@@ -29,33 +29,36 @@ pub enum Signal {
     Data {
         name: String,
         sig_type: SigType,
-        // I've seen a 0 bit signal parameter in a xilinx
-        // simulation before that gets assigned 1 bit values.
-        // I consider this to be bad behavior. We capture such
-        // errors in the following type:
+        /// I've seen a 0 bit signal parameter in a xilinx
+        /// simulation before that gets assigned 1 bit values.
+        /// I consider this to be bad behavior. We capture such
+        /// errors in the following type:
         signal_error: Option<String>,
         num_bits: Option<u16>,
         num_bytes: Option<u8>,
-        // TODO : may be able to remove self_idx
+        /// TODO : may be able to remove self_idx
         self_idx: SignalIdx,
-        // A signal may take on a new value and hold that value
-        // for sometime. We only need to record the value of a signal
-        // when it changes(the is what VCDs tend to do).
-        // A signal may need x amount of bytes to record its largest possible
-        // value, so we record every single value of a given signal as a sequence
-        // of x number of u8s.
-        // For example, we might find that `my_signal.nums_encoded_as_fixed_width_le_u8`
-        // has two 32 bit values, namely, 1 and 2, encoded as follows:
-        // my_signal.nums_encoded_as_fixed_width_le_u8 = vec![1u8, 0u8, 0u8, 0u8, 2u8, 0u8, 0u8, 0u8];
+        /// A signal may take on a new value and hold that value
+        /// for sometime. We only need to record the value of a signal
+        /// when it changes(the is what VCDs tend to do).
+        /// A signal may need x amount of bytes to record its largest 
+        /// possible value, so we record every single value of a given 
+        /// signal as a sequence of x number of u8s.
+        /// For example, we might find that `my_signal.
+        /// nums_encoded_as_fixed_width_le_u8`
+        /// has two 32 bit values, namely, 1 and 2, encoded as follows:
+        /// my_signal.nums_encoded_as_fixed_width_le_u8 = vec![1u8, 0u8, 
+        /// 0u8, 0u8, 2u8, 0u8, 0u8, 0u8];
         nums_encoded_as_fixed_width_le_u8: Vec<u8>,
         string_vals: Vec<String>,
-        // we could do Vec<(LsbIdxOfTmstmpValOnTmln, u8)>, but I suspect that
-        // Vec<LsbIdxOfTmstmpValOnTmln> is more cache friendly.
-        // We use ``LsbIdxOfTmstmpValOnTmln`` to index into the LSB of a particular
-        // timestamp encoded as the minimu length u8 sequence within
-        // ``vcd.tmstmps_encoded_as_u8s``, and we use the values in
-        // ``byte_len_of_num_tmstmp_vals_on_tmln`` to determine how many u8 values
-        // a particular timestamp is composed of.
+        /// we could do Vec<(LsbIdxOfTmstmpValOnTmln, u8)>, but I 
+        /// suspect that Vec<LsbIdxOfTmstmpValOnTmln> is more cache 
+        /// friendly. We use ``LsbIdxOfTmstmpValOnTmln`` to index into 
+        /// the LSB of a particular timestamp encoded as the 
+        /// minimum length u8 sequence within 
+        /// ``vcd.tmstmps_encoded_as_u8s``, and we use the values in
+        /// ``byte_len_of_num_tmstmp_vals_on_tmln`` to determine how 
+        /// many u8 values a particular timestamp is composed of.
         lsb_indxs_of_num_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
         byte_len_of_string_tmstmp_vals_on_tmln: Vec<u8>,
@@ -114,7 +117,11 @@ impl Signal {
 
 }
 
+// helper functions ultimately used by Signal's query functions later on
 impl Signal {
+    /// Computes the bytes required to store a signal's numerical value
+    /// using the num_bits which another function would provide from
+    /// the num_bits field of the Signal::Data variant.
     pub(super) fn bytes_required(num_bits: u16, name: &String) -> Result<u8, String> {
         let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
         let bytes_required = u8::try_from(bytes_required).map_err(|_| {
@@ -127,6 +134,13 @@ impl Signal {
         })?;
         Ok(bytes_required)
     }
+    /// This function takes an event_idx which(is used to index into the
+    /// global timeline field of a VCD struct instance) and computes
+    /// the time pointed at by event_idx.
+    /// This function also uses the same idx to index into the
+    /// string_vals field of an instance of the Signal::Data variant
+    ///  and gets a string value.
+    /// The function returns a tuple of the timestamp and string value.
     pub(super) fn time_and_str_val_at_event_idx(
         &self,
         event_idx: usize,
@@ -165,6 +179,16 @@ impl Signal {
 
         Ok((timestamp, signal_val))
     }
+    /// This function takes an event_idx which(is used to index into the
+    /// global timeline field of a VCD struct instance) and computes
+    /// the time pointed at by event_idx.
+    /// This function also uses the same idx to index into the
+    /// nums_encoded_as_fixed_width_le_u8 and 
+    /// byte_len_of_num_tmstmp_vals_on_tmln fields of an instance 
+    /// of the Signal::Data variant to compute the signal's corresponding
+    /// numerical value at the time pointed at by event_didx.
+    /// The function returns a tuple of the timestamp and numerical
+    /// value.
     pub(super) fn time_and_num_val_at_event_idx(
         &self,
         event_idx: usize,
@@ -211,6 +235,13 @@ impl Signal {
 
         Ok((timestamp, signal_val))
     }
+}
+
+// Val and string query functions.
+// Function that take in a desired time on the timeline for a
+// specific signal and return a numerical or string value in a Result,
+// or an error in a Result.
+impl Signal {
     pub fn query_string_val_on_tmln(
         &self,
         desired_time: &BigUint,
