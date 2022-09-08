@@ -76,6 +76,7 @@ pub enum SignalErrors {
     },
     EmptyTimeline,
     TimelineNotMultiple,
+    StrTmlnLenMismatch,
     OrderingFailure {
         lhs_time: BigUint,
         mid_time: BigUint,
@@ -89,6 +90,29 @@ pub enum SignalErrors {
 // these are thin type aliases primarily to make code more readable later on
 type TimeStamp = BigUint;
 type SignalValNum = BigUint;
+
+// getter functions
+impl Signal {
+    pub fn self_idx(&self) -> Result<SignalIdx, String> {
+        match self {
+            Signal::Data { self_idx, ..} => {return Ok(self_idx.clone())},
+            Signal::Alias { .. } => Err(format!(
+                "Error near {}:{}. A signal alias shouldn't \
+                 point to a signal alias.",
+                file!(),
+                line!()
+            )),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match self {
+            Signal::Data { name, ..} => name,
+            Signal::Alias { name, .. } => name
+        }.clone()
+    }
+
+}
 
 impl Signal {
     pub(super) fn bytes_required(num_bits: u16, name: &String) -> Result<u8, String> {
@@ -187,9 +211,124 @@ impl Signal {
 
         Ok((timestamp, signal_val))
     }
+    pub fn query_string_val_on_tmln(
+        &self,
+        desired_time: &BigUint,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+        all_signals: &Vec<Signal>,
+    ) -> Result<String, SignalErrors> {
+        let signal_idx = match self {
+            Self::Data { self_idx, .. } => {
+                let SignalIdx(idx) = self_idx;
+                *idx
+            }
+            Self::Alias {
+                name: _,
+                signal_alias,
+            } => {
+                let SignalIdx(idx) = signal_alias;
+                *idx
+            }
+        };
+
+        // if the signal idx points to data variant of the signal,
+        // extract:
+        // 1. the vector of string values
+        // 2. the vector of indices into timeline where events occur
+        //    for this signal
+        // else we propagate Err(..).
+        let (string_vals, lsb_indxs_of_string_tmstmp_vals_on_tmln) =
+            match &all_signals[signal_idx] {
+                Signal::Data {
+                    ref string_vals,
+                    ref lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                    ..
+                } => {
+                    Ok((
+                        string_vals,
+                        lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                    ))
+                }
+                Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+            }?;
+        // this signal should at least have some events, otherwise, trying to index into
+        // an empty vector later on would fail
+        if lsb_indxs_of_string_tmstmp_vals_on_tmln.is_empty() {
+            return Err(SignalErrors::EmptyTimeline);
+        }
+
+        // the vector of string timeline lsb indices should have the same
+        // length as the vector of string values
+        if string_vals.len() != lsb_indxs_of_string_tmstmp_vals_on_tmln.len() {
+            return Err(SignalErrors::StrTmlnLenMismatch);
+        }
+
+        // check if we're requesting a value that occurs before the recorded
+        // start of the timeline
+        let (timeline_start_time, _) =
+            self.time_and_str_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
+        if *desired_time < timeline_start_time {
+            return Err(SignalErrors::PreTimeline {
+                desired_time: desired_time.clone(),
+                timeline_start_time: timeline_start_time,
+            });
+        }
+
+        let mut lower_idx = 0usize;
+        let mut upper_idx = lsb_indxs_of_string_tmstmp_vals_on_tmln.len() - 1;
+        let (timeline_end_time, timeline_end_val) =
+            self.time_and_str_val_at_event_idx(upper_idx, tmstmps_encoded_as_u8s)?;
+
+        // check if we're requesting a value that occurs beyond the end of the timeline,
+        // if so, return the last value in this timeline
+        if *desired_time > timeline_end_time {
+            return Ok(timeline_end_val.to_string());
+        }
+
+        // This while loop is the meat of the lookup. Performance is log2(n),
+        // where n is the number of events on the timeline.
+        // We can assume that by the time we get here, that the desired_time
+        // is an event that occurs on the timeline, given that we handle any events
+        // occuring after or before the recorded tiimeline in the code above.
+        while lower_idx <= upper_idx {
+            let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
+            let (curr_time, curr_val) =
+                self.time_and_str_val_at_event_idx(mid_idx, tmstmps_encoded_as_u8s)?;
+            let ordering = curr_time.cmp(desired_time);
+
+            match ordering {
+                std::cmp::Ordering::Less => {
+                    lower_idx = mid_idx + 1;
+                }
+                std::cmp::Ordering::Equal => {
+                    return Ok(curr_val.to_string());
+                }
+                std::cmp::Ordering::Greater => {
+                    upper_idx = mid_idx - 1;
+                }
+            }
+        }
+
+        let (left_time, left_val) =
+            self.time_and_str_val_at_event_idx(lower_idx - 1, tmstmps_encoded_as_u8s)?;
+        let (right_time, _) =
+            self.time_and_str_val_at_event_idx(lower_idx, tmstmps_encoded_as_u8s)?;
+
+        let ordered_left = left_time < *desired_time;
+        let ordered_right = *desired_time < right_time;
+        if !(ordered_left && ordered_right) {
+            return Err(SignalErrors::OrderingFailure {
+                lhs_time: left_time,
+                mid_time: desired_time.clone(),
+                rhs_time: right_time,
+            });
+        }
+
+        return Ok(left_val.to_string());
+    }
     pub fn query_num_val_on_tmln(
         &self,
-        desired_time: BigUint,
+        desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
         all_signals: &Vec<Signal>,
     ) -> Result<BigUint, SignalErrors> {
@@ -207,6 +346,13 @@ impl Signal {
             }
         };
 
+        // if the signal idx points to data variant of the signal,
+        // extract:
+        // 1. the vector of LE u8 compressed values
+        // 2. the vector of indices into timeline where events occur
+        //    for this signal
+        // 3. the number of bytes per value for this signal
+        // else we propagate Err(..).
         let (nums_encoded_as_fixed_width_le_u8, lsb_indxs_of_num_tmstmp_vals_on_tmln, num_bytes) =
             match &all_signals[signal_idx] {
                 Signal::Data {
@@ -244,10 +390,6 @@ impl Signal {
         if nums_encoded_as_fixed_width_le_u8.len()
             != (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
         {
-            dbg!((
-                nums_encoded_as_fixed_width_le_u8.len(),
-                (lsb_indxs_of_num_tmstmp_vals_on_tmln.len() * (bytes_required as usize))
-            ));
             return Err(SignalErrors::TimelineNotMultiple);
         }
 
@@ -255,9 +397,9 @@ impl Signal {
         // start of the timeline
         let (timeline_start_time, _) =
             self.time_and_num_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
-        if desired_time < timeline_start_time {
+        if *desired_time < timeline_start_time {
             return Err(SignalErrors::PreTimeline {
-                desired_time: desired_time,
+                desired_time: desired_time.clone(),
                 timeline_start_time: timeline_start_time,
             });
         }
@@ -269,7 +411,7 @@ impl Signal {
 
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
-        if desired_time > timeline_end_time {
+        if *desired_time > timeline_end_time {
             return Ok(timeline_end_val);
         }
 
@@ -282,7 +424,7 @@ impl Signal {
             let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
             let (curr_time, curr_val) =
                 self.time_and_num_val_at_event_idx(mid_idx, tmstmps_encoded_as_u8s)?;
-            let ordering = curr_time.cmp(&desired_time);
+            let ordering = curr_time.cmp(desired_time);
 
             match ordering {
                 std::cmp::Ordering::Less => {
@@ -302,12 +444,12 @@ impl Signal {
         let (right_time, _) =
             self.time_and_num_val_at_event_idx(lower_idx, tmstmps_encoded_as_u8s)?;
 
-        let ordered_left = left_time < desired_time;
-        let ordered_right = desired_time < right_time;
+        let ordered_left = left_time < *desired_time;
+        let ordered_right = *desired_time < right_time;
         if !(ordered_left && ordered_right) {
             return Err(SignalErrors::OrderingFailure {
                 lhs_time: left_time,
-                mid_time: desired_time,
+                mid_time: desired_time.clone(),
                 rhs_time: right_time,
             });
         }

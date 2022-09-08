@@ -112,7 +112,7 @@ pub(super) fn parse_events<'a>(
                     )
                 })?;
 
-                let signal = vcd.try_dereference_alias_mut(signal_idx)?;
+                let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
                     Signal::Data {
@@ -225,7 +225,7 @@ pub(super) fn parse_events<'a>(
                     )
                 })?;
 
-                let signal = vcd.try_dereference_alias_mut(signal_idx)?;
+                let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
                     Signal::Data {
@@ -316,7 +316,7 @@ pub(super) fn parse_events<'a>(
                     )
                 })?;
 
-                let signal = vcd.try_dereference_alias_mut(signal_idx)?;
+                let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
                     Signal::Data {
@@ -409,7 +409,7 @@ pub(super) fn parse_events<'a>(
                     )
                 })?;
 
-                let signal = vcd.try_dereference_alias_mut(signal_idx)?;
+                let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
                     Signal::Data {
@@ -465,6 +465,55 @@ pub(super) fn parse_events<'a>(
                         byte_len_of_string_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
 
                         // record value
+                        string_vals.push(val);
+                        Ok(())
+                    }
+                    Signal::Alias { .. } => {
+                        let (f, l) = (file!(), line!());
+                        let msg = format!(
+                            "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
+                             This error occurred while parsing vcd file at {cursor:?}");
+                        Err(msg)
+                    }
+                }?;
+            }
+            "s" => {
+                let val = word[1..].to_string();
+                let (hash, cursor) = next_word!(word_reader)?;
+                // lokup signal idx
+                let signal_idx = signal_map.get(hash).ok_or(()).map_err(|_| {
+                    format!(
+                        "Error near {}:{}. Failed to lookup signal {hash} at {cursor:?}",
+                        file!(),
+                        line!()
+                    )
+                })?;
+
+                let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
+
+                match signal {
+                    Signal::Data {
+                        name,
+                        sig_type,
+                        ref mut signal_error,
+                        num_bits,
+                        string_vals,
+                        byte_len_of_num_tmstmp_vals_on_tmln,
+                        byte_len_of_string_tmstmp_vals_on_tmln,
+                        lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                        ..
+                    } => {
+                        // if this is a bad signal, go ahead and skip it
+                        if signal_error.is_some() {
+                            continue;
+                        }
+
+                        // record timestamp at which this event occurs
+                        lsb_indxs_of_string_tmstmp_vals_on_tmln
+                            .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
+                        byte_len_of_string_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
+
+                        // record string value
                         string_vals.push(val);
                         Ok(())
                     }

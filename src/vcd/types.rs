@@ -60,12 +60,12 @@ pub struct VCD {
 }
 
 impl VCD {
-    /// We take in a Signal and attempt to dereference that signal if it is of
+    /// We take in a Signal and attempt to de-alias that signal if it is of
     /// variant ``Signal::Alias``. If it is of variant ``Signal::Alias`` and points to
     /// another alias, that's an error. Otherwise, we return the ``Signal::Data``
     /// pointed to by the ``Signal::Alias``.
     /// If the Signal is of varint ``Signal::Data``, then that can be returned directly.
-    pub(super) fn try_dereference_alias_mut<'a>(
+    pub(super) fn dealiasing_signal_idx_to_signal_lookup_mut<'a>(
         &'a mut self,
         idx: &SignalIdx,
     ) -> Result<&'a mut Signal, String> {
@@ -92,7 +92,7 @@ impl VCD {
             )),
         }
     }
-    pub(super) fn try_dereference_alias<'a>(
+    pub(super) fn dealiasing_signal_idx_to_signal_lookup<'a>(
         &'a self,
         idx: &SignalIdx,
     ) -> Result<&'a Signal, String> {
@@ -100,6 +100,35 @@ impl VCD {
         let SignalIdx(idx) = idx;
         let signal = &self.all_signals[*idx];
 
+        // dereference signal if Signal::Alias, or keep idx if Signal::Data
+        let signal_idx = match signal {
+            Signal::Data { self_idx, .. } => *self_idx,
+            Signal::Alias { name, signal_alias } => *signal_alias,
+        };
+
+        // Should now  point to Signal::Data variant, or else there's an error
+        let SignalIdx(idx) = signal_idx;
+        let signal = self.all_signals.get(idx).unwrap();
+        match signal {
+            Signal::Data { .. } => Ok(signal),
+            Signal::Alias { .. } => Err(format!(
+                "Error near {}:{}. A signal alias shouldn't \
+                 point to a signal alias.",
+                file!(),
+                line!()
+            )),
+        }
+    }
+    /// Takes a signal as input and returns the signal if the signal is of the 
+    /// Signal::Data variant, else the function follows follows the uses the 
+    /// SignalIdx in the signal_alias field of Signal::Alias variant to index
+    /// into the signal arena in the all_signals field of the vcd, and returns
+    /// the resulting signal if that signal is a Signal::Data variant, else,
+    /// this function returns an Err.
+    pub fn dealiasing_signal_lookup<'a>(
+        &'a self,
+        signal: &Signal
+    ) -> Result<&'a Signal, String> {
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
             Signal::Data { self_idx, .. } => *self_idx,

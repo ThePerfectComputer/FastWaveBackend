@@ -75,7 +75,7 @@ Here's a command to test on a malformed VCD:
        - [ ] may need to refactor with allow for get_mut for dynamic
              compression-decompression for multiple signal structs 
              at once to allow for multi-threading
- - [ ] add string support for timeline value scanner
+ - [x] add string support for timeline value scanner
  - [ ] test against large waveforms from the
        [verilog-vcd-parser](https://github.com/ben-marshall/verilog-vcd-parser)
        tool
@@ -91,6 +91,7 @@ Here's a command to test on a malformed VCD:
  - [ ] Move part of the performance section to another markdown file.
 
 ## Repairs
+ - [ ] replace str bracket indices with get(slice)
  - [ ] make a custom date parser for possibly up to 18 different versions(that is, for each possible tool).
  - [ ] Consolidate error messages and add cursors throughout.
  - [ ] Add file and line to the enum errors.
@@ -98,6 +99,7 @@ Here's a command to test on a malformed VCD:
        able to successfully parse all sample VCDs.
 
 ## Code Consistency
+ - [ ] split impls in signal.rs into groups
  - [ ] Change error messages to line and filenames. Go through all calls to unwrap.
    - [ ] search for any unwraps or any direct vectors indexing
  - [ ] Handle TODOs
