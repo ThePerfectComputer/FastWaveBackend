@@ -53,7 +53,11 @@ various EDA tools. If you want a larger VCD file, grab one from
 
 The first build of the program may take some time.
 
-``cargo run --release test-vcd-files/aldec/SPI_Write.vcd``
+``cargo run --release --example parse_vcd tests/vcd-files/aldec/SPI_Write.vcd``
+
+You can also run the vcd1 or vcd2 example with:
+ - cargo run --release --example vcd1
+ - cargo run --release --example vcd2
 
 You can run all the tests with ``cargo test``
 
@@ -62,7 +66,7 @@ You may wish to test the parser on a malformed VCD just to make
 sure that the parser gives useful/sane errors.
 
 Here's a command to test on a malformed VCD:
-`cargo run --release test-vcd-files/VCD_file_with_errors.vcd`
+``cargo run --release --example parse_vcd tests/vcd-files/VCD_file_with_errors.vcd``
 
 
 # TODO

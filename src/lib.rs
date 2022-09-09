@@ -1,1 +1,2 @@
-pub mod vcd;
+mod vcd;
+pub use vcd::*;
