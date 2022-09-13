@@ -24,7 +24,7 @@ pub(super) struct Metadata {
 
 // We do a lot of arena allocation in this codebase.
 #[derive(Debug, Copy, Clone)]
-pub struct ScopeIdx(pub(super) usize);
+pub struct ScopeIdx(pub usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SignalIdx(pub(super) usize);
@@ -53,13 +53,26 @@ pub struct VCD {
     // vector of u8s that constitute a timestamp value. Signals don't have to
     // keep track of all timestamp values, a given signal only needs to keep
     // track of the timestamps at which the given signal value changes.
-    pub tmstmps_encoded_as_u8s: Vec<u8>,
-    pub all_signals: Vec<Signal>,
+    pub(super) tmstmps_encoded_as_u8s: Vec<u8>,
+    pub(super) all_signals: Vec<Signal>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
 }
 
 impl VCD {
+    pub fn root_scopes_by_idx(&self) -> Vec<ScopeIdx> {
+        self.root_scopes.clone()
+    }
+    pub fn child_scopes_by_idx(&self, scope_idx: ScopeIdx) -> Vec<ScopeIdx> {
+        let ScopeIdx(idx) = scope_idx;
+        let scope = &self.all_scopes[idx];
+        scope.child_scopes.clone()
+    }
+    pub fn scope_name_by_idx(&self, scope_idx: ScopeIdx) -> &String {
+        let ScopeIdx(idx) = scope_idx;
+        let scope = &self.all_scopes[idx];
+        &scope.name
+    }
     /// We take in a Signal and attempt to de-alias that signal if it is of
     /// variant ``Signal::Alias``. If it is of variant ``Signal::Alias`` and points to
     /// another alias, that's an error. Otherwise, we return the ``Signal::Data``
@@ -119,16 +132,13 @@ impl VCD {
             )),
         }
     }
-    /// Takes a signal as input and returns the signal if the signal is of the 
-    /// Signal::Data variant, else the function follows follows the uses the 
+    /// Takes a signal as input and returns the signal if the signal is of the
+    /// Signal::Data variant, else the function follows follows the uses the
     /// SignalIdx in the signal_alias field of Signal::Alias variant to index
     /// into the signal arena in the all_signals field of the vcd, and returns
     /// the resulting signal if that signal is a Signal::Data variant, else,
     /// this function returns an Err.
-    pub fn dealiasing_signal_lookup<'a>(
-        &'a self,
-        signal: &Signal
-    ) -> Result<&'a Signal, String> {
+    pub fn dealiasing_signal_lookup<'a>(&'a self, signal: &Signal) -> Result<&'a Signal, String> {
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
             Signal::Data { self_idx, .. } => *self_idx,

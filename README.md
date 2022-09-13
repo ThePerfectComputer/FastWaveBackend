@@ -2,6 +2,11 @@ Copyright - Yehowshua Immanuel
 
 # A High performance, VCD Parser written in Rust
 
+Below is a screenshot of the early stages of the proprietary 
+viewer frontend that builds on this backend:
+
+![](assets/viewer.png)
+
 # Current Features
 
  - Robust Error Handling
@@ -55,9 +60,7 @@ The first build of the program may take some time.
 
 ``cargo run --release --example parse_vcd tests/vcd-files/aldec/SPI_Write.vcd``
 
-You can also run the vcd1 or vcd2 example with:
- - cargo run --release --example vcd1
- - cargo run --release --example vcd2
+You can also run the vcd example with: cargo run --release --example vcd1.
 
 You can run all the tests with ``cargo test``
 
@@ -73,6 +76,8 @@ Here's a command to test on a malformed VCD:
 
 ## Features and Other
  - [ ] add documenting comments
+ - [ ] make signal query private until later?
+ - [ ] change crate name to vcd_fast_parse
  - [ ] perhaps we should be looking up signal values on the VCD class
  - [ ] perhaps we should be returning signal trees from the VCD class
  - [ ] add lz4 compression support and compare memory perf before and after

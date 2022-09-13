@@ -1,5 +1,5 @@
-//! part of the vcd parser that handles parsing the signal tree and
-//! building the resulting signal tree
+/// part of the vcd parser that handles parsing the signal tree and
+/// building the resulting signal tree
 use super::*;
 
 pub(super) fn parse_var<'a>(

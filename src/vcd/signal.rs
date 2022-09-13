@@ -1,5 +1,5 @@
 use super::{ScopeIdx, SignalIdx};
-use num::{BigUint, Zero};
+use num::{BigUint};
 
 // Index to the least significant byte of a timestamp
 // value on the timeline

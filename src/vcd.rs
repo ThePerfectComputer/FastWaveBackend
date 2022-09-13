@@ -2,7 +2,7 @@ mod reader;
 use reader::*;
 
 mod types;
-use types::*;
+pub use types::*;
 
 mod parse;
 pub use parse::*;
