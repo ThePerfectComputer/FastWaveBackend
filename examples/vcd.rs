@@ -27,7 +27,8 @@ fn print_root_scope_tree(root_idx: ScopeIdx, vcd: &VCD, indent : u8) {
 
 fn ui_all_scopes(vcd: &VCD) {
     for root_scope_idx in vcd.root_scopes_by_idx() {
-        print_root_scope_tree(root_scope_idx, vcd, 0u8);
+        indented_print(0, vcd.scope_name_by_idx(root_scope_idx));
+        print_root_scope_tree(root_scope_idx, vcd, 1u8);
     }
 }
 
