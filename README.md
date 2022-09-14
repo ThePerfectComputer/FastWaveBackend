@@ -77,6 +77,7 @@ Here's a command to test on a malformed VCD:
 ## Features and Other
  - [ ] add documenting comments
  - [ ] make signal query private until later?
+ - [ ] add signal query code to example once interface is finalized
  - [ ] change crate name to vcd_fast_parse
  - [ ] perhaps we should be looking up signal values on the VCD class
  - [ ] perhaps we should be returning signal trees from the VCD class
