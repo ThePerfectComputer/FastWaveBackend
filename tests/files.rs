@@ -1,3 +1,8 @@
+// Copyright (C) 2022 Yehowshua Immanuel
+// This program is distributed under both the GPLV3 license
+// and the YEHOWSHUA license, both of which can be found at
+// the root of the folder containing the sources for this program.
+
 // TODO: we should eventually be able to only test on just
 // the files const
 pub const FILES : [&str; 30] = [
