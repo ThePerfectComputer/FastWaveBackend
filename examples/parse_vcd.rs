@@ -5,7 +5,7 @@
 use clap::Parser;
 use std::fs::File;
 
-use fastwave::*;
+use fastwave_backend::*;
 
 use num::{BigUint};
 

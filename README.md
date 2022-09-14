@@ -56,11 +56,11 @@ This repository comes with several smaller VCD files emitted from
 various EDA tools. If you want a larger VCD file, grab one from
 [here](https://drive.google.com/file/d/1pfm2qo2l8fGTHHJ8TLrg1vSGaV_TUbp2/view?usp=sharing).
 
+Here are some examples you can run:
 The first build of the program may take some time.
 
-``cargo run --release --example parse_vcd tests/vcd-files/aldec/SPI_Write.vcd``
-
-You can also run the vcd example with: cargo run --release --example vcd1.
+1. ``cargo run --release --example parse_vcd tests/vcd-files/aldec/SPI_Write.vcd``
+2. ``cargo run --release --example vcd``
 
 You can run all the tests with ``cargo test``
 

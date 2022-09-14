@@ -4,20 +4,18 @@
 // the root of the folder containing the sources for this program.
 use std::fs::File;
 
-use fastwave::*;
+use fastwave_backend::*;
 
 use num::{BigUint};
 
 fn indented_print(indent : u8, name : &String) {
-    for _ in 0..indent {print!("  ");}
-    print!(" |");
-    print!(" ");
+    for _ in 0..indent {print!("  |");}
+    print!("---");
     println!("{name}");
 }
 
 fn print_root_scope_tree(root_idx: ScopeIdx, vcd: &VCD, indent : u8) {
     if vcd.child_scopes_by_idx(root_idx).is_empty() {
-        indented_print(indent, vcd.scope_name_by_idx(root_idx));
     } else {
         for child_scope_idx in vcd.child_scopes_by_idx(root_idx) {
             indented_print(indent, vcd.scope_name_by_idx(child_scope_idx));
