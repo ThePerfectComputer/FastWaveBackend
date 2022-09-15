@@ -27,11 +27,11 @@ pub(super) struct Metadata {
 }
 
 // We do a lot of arena allocation in this codebase.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ScopeIdx(pub usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SignalIdx(pub usize);
+pub struct SignalIdx(pub(super) usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
