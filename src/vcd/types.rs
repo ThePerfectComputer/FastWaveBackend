@@ -31,7 +31,7 @@ pub(super) struct Metadata {
 pub struct ScopeIdx(pub usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SignalIdx(pub(super) usize);
+pub struct SignalIdx(pub usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
