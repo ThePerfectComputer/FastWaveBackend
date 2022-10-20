@@ -1,5 +1,8 @@
 Copyright - Yehowshua Immanuel
 
+# Status
+October 20, 2022: I'm currently working on the frontend UI, and then will clean+speed up some of the backend code.
+
 # A High performance, VCD Parser written in Rust
 
 Below is a screenshot of the early stages of the proprietary 
