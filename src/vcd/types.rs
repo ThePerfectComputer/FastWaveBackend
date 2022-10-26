@@ -33,7 +33,7 @@ pub struct Metadata {
 pub struct ScopeIdx(pub usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SignalIdx(pub(super) usize);
+pub struct SignalIdx(pub usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
@@ -84,6 +84,11 @@ impl VCD {
         let scope = &self.all_scopes[idx];
         &scope.name
     }
+    pub fn signal_from_signal_idx<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
+        let SignalIdx(idx) = idx;
+        let signal_enum = &self.all_signals[idx];
+        return Signal(signal_enum);
+    }
     /// We take in a Signal and attempt to de-alias that signal if it is of
     /// variant ``Signal::Alias``. If it is of variant ``Signal::Alias`` and points to
     /// another alias, that's an error. Otherwise, we return the ``Signal::Data``
@@ -116,42 +121,4 @@ impl VCD {
             )),
         }
     }
-    pub fn get_signal<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
-        let SignalIdx(idx) = idx;
-        let signal_enum = &self.all_signals[idx];
-        return Signal(signal_enum);
-    }
-    // Takes a signal_idx as input and returns the corresponding signal if the 
-    // corresponding signal is of the Signal::Data variant, else the function the
-    // SignalIdx in the signal_alias field of Signal::Alias variant to index
-    // into the signal arena in the all_signals field of the vcd, and returns
-    // the resulting signal if that signal is a Signal::Data variant, else,
-    // this function returns an Err.
-    // pub fn try_signal_idx_to_signal<'a>(
-    //     &'a self,
-    //     idx: SignalIdx,
-    // ) -> Result<&'a Signal, String> {
-    //     // get the signal pointed to be SignalIdx from the arena
-    //     let SignalIdx(idx) = idx;
-    //     let signal = &self.all_signals[idx];
-
-    //     // dereference signal if Signal::Alias, or keep idx if Signal::Data
-    //     let signal_idx = match signal {
-    //         Signal::Data { self_idx, .. } => *self_idx,
-    //         Signal::Alias { name, signal_alias } => *signal_alias,
-    //     };
-
-    //     // Should now  point to Signal::Data variant, or else there's an error
-    //     let SignalIdx(idx) = signal_idx;
-    //     let signal = self.all_signals.get(idx).unwrap();
-    //     match signal {
-    //         Signal::Data { .. } => Ok(signal),
-    //         Signal::Alias { .. } => Err(format!(
-    //             "Error near {}:{}. A signal alias shouldn't \
-    //              point to a signal alias.",
-    //             file!(),
-    //             line!()
-    //         )),
-    //     }
-    // }
 }

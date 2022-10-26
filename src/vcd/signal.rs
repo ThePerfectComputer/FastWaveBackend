@@ -39,20 +39,18 @@ impl<'a> Signal<'a> {
     pub fn query_string_val_on_tmln(
         &self,
         desired_time: &BigUint,
-        tmstmps_encoded_as_u8s: &Vec<u8>,
         vcd: &types::VCD,
     ) -> Result<String, SignalErrors> {
         let Signal(signal_enum) = &self;
-        signal_enum.query_string_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
+        signal_enum.query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
     }
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,
-        tmstmps_encoded_as_u8s: &Vec<u8>,
         vcd: &types::VCD,
     ) -> Result<BigUint, SignalErrors> {
         let Signal(signal_enum) = &self;
-        signal_enum.query_num_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
+        signal_enum.query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
     }
 }
 
