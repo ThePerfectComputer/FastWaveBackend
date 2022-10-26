@@ -95,7 +95,7 @@ pub(super) fn parse_var<'a>(
     let full_signal_name = full_signal_name.join(" ");
 
     let num_bytes = if num_bits.is_some() {
-        let bytes_required = Signal::bytes_required(num_bits.unwrap(), &full_signal_name)?;
+        let bytes_required = SignalEnum::bytes_required(num_bits.unwrap(), &full_signal_name)?;
         Some(bytes_required)
     } else {
         None
@@ -107,7 +107,7 @@ pub(super) fn parse_var<'a>(
     let (signal, signal_idx) = match signal_map.get(&signal_alias) {
         Some(ref_signal_idx) => {
             let signal_idx = SignalIdx(vcd.all_signals.len());
-            let signal = Signal::Alias {
+            let signal = SignalEnum::Alias {
                 name: full_signal_name,
                 signal_alias: *ref_signal_idx,
             };
@@ -116,7 +116,7 @@ pub(super) fn parse_var<'a>(
         None => {
             let signal_idx = SignalIdx(vcd.all_signals.len());
             signal_map.insert(signal_alias.to_string(), signal_idx);
-            let signal = Signal::Data {
+            let signal = SignalEnum::Data {
                 name: full_signal_name,
                 sig_type: var_type,
                 signal_error: None,

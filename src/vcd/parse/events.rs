@@ -116,7 +116,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -204,7 +204,7 @@ pub(super) fn parse_events<'a>(
                             Ok(())
                         }
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -229,7 +229,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -296,7 +296,7 @@ pub(super) fn parse_events<'a>(
                         }
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -320,7 +320,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -387,7 +387,7 @@ pub(super) fn parse_events<'a>(
                         }
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -413,7 +413,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -468,7 +468,7 @@ pub(super) fn parse_events<'a>(
                         string_vals.push(val);
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -492,7 +492,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         ref mut signal_error,
                         string_vals,
                         byte_len_of_string_tmstmp_vals_on_tmln,
@@ -513,7 +513,7 @@ pub(super) fn parse_events<'a>(
                         string_vals.push(val);
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
