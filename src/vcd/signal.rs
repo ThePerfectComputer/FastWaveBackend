@@ -1,3 +1,5 @@
+use crate::VCD;
+
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
@@ -28,6 +30,32 @@ pub(super) enum TimelineQueryResults {
     String(String),
 }
 
+pub struct Signal<'a>(pub(super) &'a SignalEnum);
+
+impl<'a> Signal<'a> {
+    pub fn name(&self) -> String {
+        let Signal(signal_enum) = &self;
+        signal_enum.name()
+    }
+    pub fn query_string_val_on_tmln(
+        &self,
+        desired_time: &BigUint,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+        vcd: &VCD,
+    ) -> Result<String, SignalErrors> {
+        let Signal(signal_enum) = &self;
+        signal_enum.query_string_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
+    }
+    pub fn query_num_val_on_tmln(
+        &self,
+        desired_time: &BigUint,
+        tmstmps_encoded_as_u8s: &Vec<u8>,
+        vcd: &VCD,
+    ) -> Result<BigUint, SignalErrors> {
+        let Signal(signal_enum) = &self;
+        signal_enum.query_num_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
+    }
+}
 
 #[derive(Debug)]
 pub(super) enum SignalEnum {
@@ -134,7 +162,7 @@ impl SignalEnum {
     /// string_vals field of an instance of the Signal::Data variant
     ///  and gets a string value.
     /// The function returns a tuple of the timestamp and string value.
-    pub(super) fn time_and_str_val_at_event_idx(
+    fn time_and_str_val_at_event_idx(
         &self,
         event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
@@ -182,7 +210,7 @@ impl SignalEnum {
     /// numerical value at the time pointed at by event_didx.
     /// The function returns a tuple of the timestamp and numerical
     /// value.
-    pub(super) fn time_and_num_val_at_event_idx(
+    fn time_and_num_val_at_event_idx(
         &self,
         event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,

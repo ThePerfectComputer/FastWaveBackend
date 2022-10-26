@@ -1,3 +1,5 @@
+use crate::Signal;
+
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
@@ -113,6 +115,11 @@ impl VCD {
                 line!()
             )),
         }
+    }
+    pub fn get_signal<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
+        let SignalIdx(idx) = idx;
+        let signal_enum = &self.all_signals[idx];
+        return Signal(signal_enum)
     }
     // Takes a signal_idx as input and returns the corresponding signal if the 
     // corresponding signal is of the Signal::Data variant, else the function the
