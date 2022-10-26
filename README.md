@@ -5,10 +5,12 @@ October 20, 2022: I'm currently working on the frontend UI, and then will clean+
 
 # A High performance, VCD Parser written in Rust
 
-Below is a screenshot of the early stages of the proprietary 
-viewer frontend that builds on this backend:
+I have abandoned eGUI and will be building the following UI in 
+[Rust Tauri](https://github.com/ThePerfectComputer/FastWaveFrontend-Tauri).
 
-![](assets/viewer.png)
+It should work just fine in Windows and Linux also.
+
+![](assets/FastWaveMockup.png)
 
 # Current Features
 
