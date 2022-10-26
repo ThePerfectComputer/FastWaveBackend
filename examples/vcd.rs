@@ -4,7 +4,7 @@
 // the root of the folder containing the sources for this program.
 use std::fs::File;
 
-use fastwave_backend::*;
+use fastwave_backend::{ScopeIdx, VCD, parse_vcd};
 
 fn indented_print(indent : u8, name : &String) {
     for _ in 0..indent {print!("  |");}

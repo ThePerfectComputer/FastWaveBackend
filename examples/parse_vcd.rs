@@ -5,9 +5,7 @@
 use clap::Parser;
 use std::fs::File;
 
-use fastwave_backend::*;
-
-use num::{BigUint};
+use fastwave_backend::parse_vcd;
 
 #[derive(Parser)]
 struct Cli {
@@ -23,7 +21,7 @@ fn main() -> std::io::Result<()> {
     
     let now = Instant::now();
     let file = File::open(&args.path)?;
-    let vcd = parse_vcd(file).unwrap();
+    parse_vcd(file).unwrap();
     let elapsed = now.elapsed();
 
     println!("Parsed VCD file {} : {:.2?}", &args.path.as_os_str().to_str().unwrap(), elapsed);

@@ -2,7 +2,7 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::reader::{next_word, WordReader};
+use super::super::reader::{next_word, WordReader};
 use super::types::ParseResult;
 
 pub(super) fn digit(chr: u8) -> bool {

@@ -5,7 +5,15 @@
 
 /// part of the vcd parser that handles parsing the signal tree and
 /// building the resulting signal tree
-use super::*;
+
+use std::collections::HashMap;
+
+use super::super::reader::{WordReader, next_word, curr_word};
+use super::super::types::{VCD, Scope, ScopeIdx, SignalIdx};
+use super::super::signal::{SigType, SignalEnum};
+
+use super::combinator_atoms::{tag, ident};
+use super::types::{ParseResult};
 
 pub(super) fn parse_var<'a>(
     word_reader: &mut WordReader,
@@ -322,7 +330,7 @@ pub(super) fn parse_scopes<'a>(
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
     // get the current word
-    let (word, cursor) = curr_word!(word_reader)?;
+    let (word, _) = curr_word!(word_reader)?;
 
     // we may have orphaned vars that occur before the first scope
     if word == "$var" {

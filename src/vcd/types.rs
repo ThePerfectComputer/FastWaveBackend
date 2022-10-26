@@ -1,17 +1,17 @@
-use crate::Signal;
+// use crate::Signal;
 
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::SignalEnum;
-use chrono::prelude::*;
+use chrono::prelude::{DateTime, Utc};
+use super::signal::{Signal, SignalEnum};
 
 #[derive(Debug)]
-pub(super) struct Version(pub String);
+pub struct Version(pub String);
 
 #[derive(Debug)]
-pub(super) enum Timescale {
+pub enum Timescale {
     Fs,
     Ps,
     Ns,
@@ -22,10 +22,10 @@ pub(super) enum Timescale {
 }
 
 #[derive(Debug)]
-pub(super) struct Metadata {
-    pub(super) date: Option<DateTime<Utc>>,
-    pub(super) version: Option<Version>,
-    pub(super) timescale: (Option<u32>, Timescale),
+pub struct Metadata {
+    pub date: Option<DateTime<Utc>>,
+    pub version: Option<Version>,
+    pub timescale: (Option<u32>, Timescale),
 }
 
 // We do a lot of arena allocation in this codebase.
@@ -48,7 +48,7 @@ pub(super) struct Scope {
 
 #[derive(Debug)]
 pub struct VCD {
-    pub(super) metadata: Metadata,
+    pub metadata: Metadata,
     // Since we only need to store values when there is an actual change
     // in the timeline, we keep a vector that stores the time at which an
     // event occurs. Time t is always stored/encoded as the minimum length sequence
@@ -100,7 +100,7 @@ impl VCD {
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
             SignalEnum::Data { self_idx, .. } => *self_idx,
-            SignalEnum::Alias { name, signal_alias } => *signal_alias,
+            SignalEnum::Alias {signal_alias, .. } => *signal_alias,
         };
 
         // Should now  point to Signal::Data variant, or else there's an error
@@ -119,7 +119,7 @@ impl VCD {
     pub fn get_signal<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
         let SignalIdx(idx) = idx;
         let signal_enum = &self.all_signals[idx];
-        return Signal(signal_enum)
+        return Signal(signal_enum);
     }
     // Takes a signal_idx as input and returns the corresponding signal if the 
     // corresponding signal is of the Signal::Data variant, else the function the

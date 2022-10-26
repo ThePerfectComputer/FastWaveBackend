@@ -1,10 +1,9 @@
-use crate::VCD;
-
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::{ScopeIdx, SignalIdx};
+use super::types::{ScopeIdx, SignalIdx};
+use super::types;
 use num::{BigUint};
 
 // Index to the least significant byte of a timestamp
@@ -41,7 +40,7 @@ impl<'a> Signal<'a> {
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
-        vcd: &VCD,
+        vcd: &types::VCD,
     ) -> Result<String, SignalErrors> {
         let Signal(signal_enum) = &self;
         signal_enum.query_string_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
@@ -50,7 +49,7 @@ impl<'a> Signal<'a> {
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
-        vcd: &VCD,
+        vcd: &types::VCD,
     ) -> Result<BigUint, SignalErrors> {
         let Signal(signal_enum) = &self;
         signal_enum.query_num_val_on_tmln(desired_time, tmstmps_encoded_as_u8s, &vcd.all_signals)
