@@ -2,9 +2,15 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use num::Zero;
 
-use super::*;
+use std::collections::HashMap;
+use num::BigUint;
+
+use super::super::utilities::{BinaryParserErrTypes, binary_str_to_vec_u8};
+use super::super::signal::{SignalEnum, LsbIdxOfTmstmpValOnTmln};
+use super::super::reader::{WordReader, Cursor, Line, Word, next_word};
+use super::super::types::{SignalIdx, VCD};
+
 
 pub(super) fn parse_events<'a>(
     word_reader: &mut WordReader,
@@ -13,7 +19,6 @@ pub(super) fn parse_events<'a>(
 ) -> Result<(), String> {
     let mut curr_tmstmp_lsb_idx = 0u32;
     let mut curr_tmstmp_len_u8 = 0u8;
-    let mut curr_time = BigUint::zero();
     loop {
         let next_word = word_reader.next_word();
 
@@ -42,7 +47,6 @@ pub(super) fn parse_events<'a>(
                             "Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}"
                         )
                     })?;
-                curr_time = value.clone();
                 let mut value = value.to_bytes_le();
                 // TODO : u32 helps with less memory, but should ideally likely be
                 // configurable.
@@ -119,7 +123,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -207,7 +211,7 @@ pub(super) fn parse_events<'a>(
                             Ok(())
                         }
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -232,7 +236,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -299,7 +303,7 @@ pub(super) fn parse_events<'a>(
                         }
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -323,7 +327,7 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
@@ -390,7 +394,7 @@ pub(super) fn parse_events<'a>(
                         }
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -416,13 +420,12 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
+                    SignalEnum::Data {
                         name,
                         sig_type,
                         ref mut signal_error,
                         num_bits,
                         string_vals,
-                        byte_len_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_string_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                         ..
@@ -472,7 +475,7 @@ pub(super) fn parse_events<'a>(
                         string_vals.push(val);
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\
@@ -496,13 +499,9 @@ pub(super) fn parse_events<'a>(
                 let signal = vcd.dealiasing_signal_idx_to_signal_lookup_mut(signal_idx)?;
 
                 match signal {
-                    Signal::Data {
-                        name,
-                        sig_type,
+                    SignalEnum::Data {
                         ref mut signal_error,
-                        num_bits,
                         string_vals,
-                        byte_len_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_string_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                         ..
@@ -521,7 +520,7 @@ pub(super) fn parse_events<'a>(
                         string_vals.push(val);
                         Ok(())
                     }
-                    Signal::Alias { .. } => {
+                    SignalEnum::Alias { .. } => {
                         let (f, l) = (file!(), line!());
                         let msg = format!(
                             "Error near {f}:{l}, a signal alias should not point to a signal alias.\n\

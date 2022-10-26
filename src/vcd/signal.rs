@@ -2,7 +2,8 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::{ScopeIdx, SignalIdx};
+use super::types::{ScopeIdx, SignalIdx};
+use super::types;
 use num::{BigUint};
 
 // Index to the least significant byte of a timestamp
@@ -28,8 +29,33 @@ pub(super) enum TimelineQueryResults {
     String(String),
 }
 
+pub struct Signal<'a>(pub(super) &'a SignalEnum);
+
+impl<'a> Signal<'a> {
+    pub fn name(&self) -> String {
+        let Signal(signal_enum) = &self;
+        signal_enum.name()
+    }
+    pub fn query_string_val_on_tmln(
+        &self,
+        desired_time: &BigUint,
+        vcd: &types::VCD,
+    ) -> Result<String, SignalErrors> {
+        let Signal(signal_enum) = &self;
+        signal_enum.query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
+    }
+    pub fn query_num_val_on_tmln(
+        &self,
+        desired_time: &BigUint,
+        vcd: &types::VCD,
+    ) -> Result<BigUint, SignalErrors> {
+        let Signal(signal_enum) = &self;
+        signal_enum.query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
+    }
+}
+
 #[derive(Debug)]
-pub enum Signal {
+pub(super) enum SignalEnum {
     Data {
         name: String,
         sig_type: SigType,
@@ -99,30 +125,18 @@ type TimeStamp = BigUint;
 type SignalValNum = BigUint;
 
 // getter functions
-impl Signal {
-    pub fn self_idx(&self) -> Result<SignalIdx, String> {
-        match self {
-            Signal::Data { self_idx, ..} => {return Ok(self_idx.clone())},
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-
+impl SignalEnum {
     pub fn name(&self) -> String {
         match self {
-            Signal::Data { name, ..} => name,
-            Signal::Alias { name, .. } => name
+            SignalEnum::Data { name, ..} => name,
+            SignalEnum::Alias { name, .. } => name
         }.clone()
     }
 
 }
 
 // helper functions ultimately used by Signal's query functions later on
-impl Signal {
+impl SignalEnum {
     /// Computes the bytes required to store a signal's numerical value
     /// using the num_bits which another function would provide from
     /// the num_bits field of the Signal::Data variant.
@@ -145,7 +159,7 @@ impl Signal {
     /// string_vals field of an instance of the Signal::Data variant
     ///  and gets a string value.
     /// The function returns a tuple of the timestamp and string value.
-    pub(super) fn time_and_str_val_at_event_idx(
+    fn time_and_str_val_at_event_idx(
         &self,
         event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
@@ -155,7 +169,7 @@ impl Signal {
             lsb_indxs_of_string_tmstmp_vals_on_tmln,
             byte_len_of_string_tmstmp_vals_on_tmln,
         ) = match self {
-            Signal::Data {
+            SignalEnum::Data {
                 string_vals,
                 lsb_indxs_of_string_tmstmp_vals_on_tmln,
                 byte_len_of_string_tmstmp_vals_on_tmln,
@@ -165,7 +179,7 @@ impl Signal {
                 lsb_indxs_of_string_tmstmp_vals_on_tmln,
                 byte_len_of_string_tmstmp_vals_on_tmln,
             )),
-            Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+            SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
         }?;
 
         // get index
@@ -193,7 +207,7 @@ impl Signal {
     /// numerical value at the time pointed at by event_didx.
     /// The function returns a tuple of the timestamp and numerical
     /// value.
-    pub(super) fn time_and_num_val_at_event_idx(
+    fn time_and_num_val_at_event_idx(
         &self,
         event_idx: usize,
         tmstmps_encoded_as_u8s: &Vec<u8>,
@@ -204,7 +218,7 @@ impl Signal {
             lsb_indxs_of_num_tmstmp_vals_on_tmln,
             byte_len_of_num_tmstmp_vals_on_tmln,
         ) = match self {
-            Signal::Data {
+            SignalEnum::Data {
                 num_bytes,
                 nums_encoded_as_fixed_width_le_u8,
                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
@@ -216,7 +230,7 @@ impl Signal {
                 lsb_indxs_of_num_tmstmp_vals_on_tmln,
                 byte_len_of_num_tmstmp_vals_on_tmln,
             )),
-            Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+            SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
         }?;
 
         // get index
@@ -245,12 +259,12 @@ impl Signal {
 // Function that take in a desired time on the timeline for a
 // specific signal and return a numerical or string value in a Result,
 // or an error in a Result.
-impl Signal {
+impl SignalEnum {
     pub fn query_string_val_on_tmln(
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
-        all_signals: &Vec<Signal>,
+        all_signals: &Vec<SignalEnum>,
     ) -> Result<String, SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
@@ -274,7 +288,7 @@ impl Signal {
         // else we propagate Err(..).
         let (string_vals, lsb_indxs_of_string_tmstmp_vals_on_tmln) =
             match &all_signals[signal_idx] {
-                Signal::Data {
+                SignalEnum::Data {
                     ref string_vals,
                     ref lsb_indxs_of_string_tmstmp_vals_on_tmln,
                     ..
@@ -284,7 +298,7 @@ impl Signal {
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
                     ))
                 }
-                Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+                SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
             }?;
         // this signal should at least have some events, otherwise, trying to index into
         // an empty vector later on would fail
@@ -365,7 +379,7 @@ impl Signal {
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
-        all_signals: &Vec<Signal>,
+        all_signals: &Vec<SignalEnum>,
     ) -> Result<BigUint, SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
@@ -390,7 +404,7 @@ impl Signal {
         // else we propagate Err(..).
         let (nums_encoded_as_fixed_width_le_u8, lsb_indxs_of_num_tmstmp_vals_on_tmln, num_bytes) =
             match &all_signals[signal_idx] {
-                Signal::Data {
+                SignalEnum::Data {
                     num_bytes,
                     ref nums_encoded_as_fixed_width_le_u8,
                     ref lsb_indxs_of_num_tmstmp_vals_on_tmln,
@@ -405,7 +419,7 @@ impl Signal {
                         num_bytes,
                     ))
                 }
-                Signal::Alias { .. } => Err(SignalErrors::PointsToAlias),
+                SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
             }?;
         // this signal should at least have some events, otherwise, trying to index into
         // an empty vector later on would fail

@@ -2,10 +2,14 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use chrono::prelude::*;
+use chrono::prelude::{DateTime, Utc, TimeZone};
 use itertools::Itertools;
 
-use super::*;
+use super::super::reader::{Cursor, WordReader, next_word};
+use super::super::types::{Timescale, Version, Metadata};
+
+use super::combinator_atoms::{take_until, take_while, digit, tag};
+use super::types::{ParseResult};
 
 pub(super) fn parse_date(
     word_and_ctx1: (&str, &Cursor),

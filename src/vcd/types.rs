@@ -1,15 +1,17 @@
+// use crate::Signal;
+
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::Signal;
-use chrono::prelude::*;
+use chrono::prelude::{DateTime, Utc};
+use super::signal::{Signal, SignalEnum};
 
 #[derive(Debug)]
-pub(super) struct Version(pub String);
+pub struct Version(pub String);
 
 #[derive(Debug)]
-pub(super) enum Timescale {
+pub enum Timescale {
     Fs,
     Ps,
     Ns,
@@ -20,10 +22,10 @@ pub(super) enum Timescale {
 }
 
 #[derive(Debug)]
-pub(super) struct Metadata {
-    pub(super) date: Option<DateTime<Utc>>,
-    pub(super) version: Option<Version>,
-    pub(super) timescale: (Option<u32>, Timescale),
+pub struct Metadata {
+    pub date: Option<DateTime<Utc>>,
+    pub version: Option<Version>,
+    pub timescale: (Option<u32>, Timescale),
 }
 
 // We do a lot of arena allocation in this codebase.
@@ -31,7 +33,7 @@ pub(super) struct Metadata {
 pub struct ScopeIdx(pub usize);
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SignalIdx(pub(super) usize);
+pub struct SignalIdx(pub usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
@@ -46,7 +48,7 @@ pub(super) struct Scope {
 
 #[derive(Debug)]
 pub struct VCD {
-    pub(super) metadata: Metadata,
+    pub metadata: Metadata,
     // Since we only need to store values when there is an actual change
     // in the timeline, we keep a vector that stores the time at which an
     // event occurs. Time t is always stored/encoded as the minimum length sequence
@@ -58,7 +60,7 @@ pub struct VCD {
     // keep track of all timestamp values, a given signal only needs to keep
     // track of the timestamps at which the given signal value changes.
     pub(super) tmstmps_encoded_as_u8s: Vec<u8>,
-    pub(super) all_signals: Vec<Signal>,
+    pub(super) all_signals: Vec<SignalEnum>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
 }
@@ -72,10 +74,20 @@ impl VCD {
         let scope = &self.all_scopes[idx];
         scope.child_scopes.clone()
     }
+    pub fn get_children_signal_idxs(&self, scope_idx: ScopeIdx) -> Vec<SignalIdx> {
+        let ScopeIdx(idx) = scope_idx;
+        let scope = &self.all_scopes[idx];
+        scope.child_signals.clone()
+    }
     pub fn scope_name_by_idx(&self, scope_idx: ScopeIdx) -> &String {
         let ScopeIdx(idx) = scope_idx;
         let scope = &self.all_scopes[idx];
         &scope.name
+    }
+    pub fn signal_from_signal_idx<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
+        let SignalIdx(idx) = idx;
+        let signal_enum = &self.all_signals[idx];
+        return Signal(signal_enum);
     }
     /// We take in a Signal and attempt to de-alias that signal if it is of
     /// variant ``Signal::Alias``. If it is of variant ``Signal::Alias`` and points to
@@ -85,76 +97,23 @@ impl VCD {
     pub(super) fn dealiasing_signal_idx_to_signal_lookup_mut<'a>(
         &'a mut self,
         idx: &SignalIdx,
-    ) -> Result<&'a mut Signal, String> {
+    ) -> Result<&'a mut SignalEnum, String> {
         // get the signal pointed to be SignalIdx from the arena
         let SignalIdx(idx) = idx;
         let signal = &self.all_signals[*idx];
 
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
-            Signal::Data { self_idx, .. } => *self_idx,
-            Signal::Alias { name, signal_alias } => *signal_alias,
+            SignalEnum::Data { self_idx, .. } => *self_idx,
+            SignalEnum::Alias {signal_alias, .. } => *signal_alias,
         };
 
         // Should now  point to Signal::Data variant, or else there's an error
         let SignalIdx(idx) = signal_idx;
         let signal = self.all_signals.get_mut(idx).unwrap();
         match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-    pub(super) fn dealiasing_signal_idx_to_signal_lookup<'a>(
-        &'a self,
-        idx: &SignalIdx,
-    ) -> Result<&'a Signal, String> {
-        // get the signal pointed to be SignalIdx from the arena
-        let SignalIdx(idx) = idx;
-        let signal = &self.all_signals[*idx];
-
-        // dereference signal if Signal::Alias, or keep idx if Signal::Data
-        let signal_idx = match signal {
-            Signal::Data { self_idx, .. } => *self_idx,
-            Signal::Alias { name, signal_alias } => *signal_alias,
-        };
-
-        // Should now  point to Signal::Data variant, or else there's an error
-        let SignalIdx(idx) = signal_idx;
-        let signal = self.all_signals.get(idx).unwrap();
-        match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-    /// Takes a signal as input and returns the signal if the signal is of the
-    /// Signal::Data variant, else the function follows follows the uses the
-    /// SignalIdx in the signal_alias field of Signal::Alias variant to index
-    /// into the signal arena in the all_signals field of the vcd, and returns
-    /// the resulting signal if that signal is a Signal::Data variant, else,
-    /// this function returns an Err.
-    pub fn dealiasing_signal_lookup<'a>(&'a self, signal: &Signal) -> Result<&'a Signal, String> {
-        // dereference signal if Signal::Alias, or keep idx if Signal::Data
-        let signal_idx = match signal {
-            Signal::Data { self_idx, .. } => *self_idx,
-            Signal::Alias { name, signal_alias } => *signal_alias,
-        };
-
-        // Should now  point to Signal::Data variant, or else there's an error
-        let SignalIdx(idx) = signal_idx;
-        let signal = self.all_signals.get(idx).unwrap();
-        match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
+            SignalEnum::Data { .. } => Ok(signal),
+            SignalEnum::Alias { .. } => Err(format!(
                 "Error near {}:{}. A signal alias shouldn't \
                  point to a signal alias.",
                 file!(),

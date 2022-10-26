@@ -95,11 +95,8 @@ Here's a command to test on a malformed VCD:
  - [ ] once the access patterns of the GUI frontend are well understood,
        create specific functions and restrict as many types to private
        as possible
- - [ ] be explicit with imports, remove exports as possible
-       once FastWave is known to be fairly stable.
  - [ ] Print out git commit or release number.
  - [ ] do a read through all the code - look for uneeded code
- - [ ] Take a look at GTKWave parser to compare efficiency.
  - [ ] Move part of the performance section to another markdown file.
 
 ## Repairs
@@ -111,7 +108,6 @@ Here's a command to test on a malformed VCD:
        able to successfully parse all sample VCDs.
 
 ## Code Consistency
- - [ ] split impls in signal.rs into groups
  - [ ] Change error messages to line and filenames. Go through all calls to unwrap.
    - [ ] search for any unwraps or any direct vectors indexing
  - [ ] Handle TODOs
