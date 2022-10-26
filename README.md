@@ -45,6 +45,8 @@ slower.
 
 ## Results
 
+LZ4 should really improve memory usage once I add it. Note that GTKWave uses LZ4 on the fly.
+
 | Software | Time(s) | Memory(MB) |
 |----------|---------|------------|
 | FastWave | ~27.30  | 1100+      |
