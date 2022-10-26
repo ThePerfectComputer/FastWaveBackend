@@ -72,6 +72,11 @@ impl VCD {
         let scope = &self.all_scopes[idx];
         scope.child_scopes.clone()
     }
+    pub fn get_children_signal_idxs(&self, scope_idx: ScopeIdx) -> Vec<SignalIdx> {
+        let ScopeIdx(idx) = scope_idx;
+        let scope = &self.all_scopes[idx];
+        scope.child_signals.clone()
+    }
     pub fn scope_name_by_idx(&self, scope_idx: ScopeIdx) -> &String {
         let ScopeIdx(idx) = scope_idx;
         let scope = &self.all_scopes[idx];
@@ -109,40 +114,20 @@ impl VCD {
             )),
         }
     }
-    pub(super) fn dealiasing_signal_idx_to_signal_lookup<'a>(
-        &'a self,
-        idx: &SignalIdx,
-    ) -> Result<&'a Signal, String> {
-        // get the signal pointed to be SignalIdx from the arena
-        let SignalIdx(idx) = idx;
-        let signal = &self.all_signals[*idx];
-
-        // dereference signal if Signal::Alias, or keep idx if Signal::Data
-        let signal_idx = match signal {
-            Signal::Data { self_idx, .. } => *self_idx,
-            Signal::Alias { name, signal_alias } => *signal_alias,
-        };
-
-        // Should now  point to Signal::Data variant, or else there's an error
-        let SignalIdx(idx) = signal_idx;
-        let signal = self.all_signals.get(idx).unwrap();
-        match signal {
-            Signal::Data { .. } => Ok(signal),
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-    /// Takes a signal as input and returns the signal if the signal is of the
-    /// Signal::Data variant, else the function follows follows the uses the
+    /// Takes a signal_idx as input and returns the corresponding signal if the 
+    /// corresponding signal is of the Signal::Data variant, else the function the
     /// SignalIdx in the signal_alias field of Signal::Alias variant to index
     /// into the signal arena in the all_signals field of the vcd, and returns
     /// the resulting signal if that signal is a Signal::Data variant, else,
     /// this function returns an Err.
-    pub fn dealiasing_signal_lookup<'a>(&'a self, signal: &Signal) -> Result<&'a Signal, String> {
+    pub fn try_signal_idx_to_signal<'a>(
+        &'a self,
+        idx: SignalIdx,
+    ) -> Result<&'a Signal, String> {
+        // get the signal pointed to be SignalIdx from the arena
+        let SignalIdx(idx) = idx;
+        let signal = &self.all_signals[idx];
+
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
             Signal::Data { self_idx, .. } => *self_idx,

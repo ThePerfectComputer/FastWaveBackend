@@ -28,6 +28,7 @@ pub(super) enum TimelineQueryResults {
     String(String),
 }
 
+
 #[derive(Debug)]
 pub enum Signal {
     Data {
@@ -100,18 +101,6 @@ type SignalValNum = BigUint;
 
 // getter functions
 impl Signal {
-    pub fn self_idx(&self) -> Result<SignalIdx, String> {
-        match self {
-            Signal::Data { self_idx, ..} => {return Ok(self_idx.clone())},
-            Signal::Alias { .. } => Err(format!(
-                "Error near {}:{}. A signal alias shouldn't \
-                 point to a signal alias.",
-                file!(),
-                line!()
-            )),
-        }
-    }
-
     pub fn name(&self) -> String {
         match self {
             Signal::Data { name, ..} => name,
