@@ -27,6 +27,7 @@ pub fn parse_vcd(file: File) -> Result<super::types::VCD, String> {
         all_signals: vec![],
         all_scopes: vec![],
         root_scopes: vec![],
+        largest_timestamp: None
     };
 
     scopes::parse_scopes(&mut word_gen, &mut vcd, &mut signal_map)?;

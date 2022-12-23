@@ -5,6 +5,7 @@
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
 use chrono::prelude::{DateTime, Utc};
+use num::BigUint;
 use super::signal::{Signal, SignalEnum};
 
 #[derive(Debug)]
@@ -63,6 +64,7 @@ pub struct VCD {
     pub(super) all_signals: Vec<SignalEnum>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
+    pub(super) largest_timestamp: Option<BigUint>
 }
 
 impl VCD {
@@ -120,5 +122,9 @@ impl VCD {
                 line!()
             )),
         }
+    }
+
+    pub fn max_timestamp(&self) -> &Option<BigUint> {
+        &self.largest_timestamp
     }
 }

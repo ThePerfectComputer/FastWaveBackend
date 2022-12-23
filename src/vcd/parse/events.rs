@@ -40,14 +40,14 @@ pub(super) fn parse_events<'a>(
             "#" => {
                 let value = &word[1..];
                 let (f, l) = (file!(), line!());
-                let value = BigUint::parse_bytes(value.as_bytes(), 10)
+                let value_biguint = BigUint::parse_bytes(value.as_bytes(), 10)
                     .ok_or(())
                     .map_err(|_| {
                         format!(
                             "Error near {f}:{l}. Failed to parse {value} as BigInt at {cursor:?}"
                         )
                     })?;
-                let mut value = value.to_bytes_le();
+                let mut value = value_biguint.to_bytes_le();
                 // TODO : u32 helps with less memory, but should ideally likely be
                 // configurable.
                 curr_tmstmp_len_u8 = u8::try_from(value.len()).map_err(|_| {
@@ -66,6 +66,7 @@ pub(super) fn parse_events<'a>(
                         )
                     })?;
                 vcd.tmstmps_encoded_as_u8s.append(&mut value);
+                vcd.largest_timestamp = Some(value_biguint);
             }
 
             // handle the case of an n bit signal whose value must be parsed
@@ -134,6 +135,7 @@ pub(super) fn parse_events<'a>(
                         lsb_indxs_of_num_tmstmp_vals_on_tmln,
                         byte_len_of_num_tmstmp_vals_on_tmln,
                         lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                        byte_len_of_string_tmstmp_vals_on_tmln,
                         ..
                     } => {
                         // we've already identified in a prior loop iteration that the signal has
@@ -176,6 +178,7 @@ pub(super) fn parse_events<'a>(
                         if store_as_string {
                             lsb_indxs_of_string_tmstmp_vals_on_tmln
                                 .push(LsbIdxOfTmstmpValOnTmln(curr_tmstmp_lsb_idx));
+                            byte_len_of_string_tmstmp_vals_on_tmln.push(curr_tmstmp_len_u8);
                             string_vals.push(value_string);
                             Ok(())
                         } else {

@@ -7,6 +7,6 @@ mod vcd;
 pub use vcd::parse::parse_vcd;
 pub use vcd::types::{ScopeIdx, SignalIdx, VCD};
 pub use vcd::types::{Metadata, Timescale, Version};
-pub use vcd::signal::{Signal};
+pub use vcd::signal::{Signal, SignalValue};
 
 pub use num::BigUint;
