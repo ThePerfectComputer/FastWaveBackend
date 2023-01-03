@@ -97,7 +97,11 @@ pub(super) fn parse_var<'a>(
         let (word, _) = next_word!(word_reader)?;
         match word {
             "$end" => break,
-            _ => full_signal_name.push(word.to_string()),
+            other => {
+                if !other.starts_with("[") {
+                    full_signal_name.push(word.to_string())
+                }
+            }
         }
     }
     let full_signal_name = full_signal_name.join(" ");
