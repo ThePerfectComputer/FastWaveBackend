@@ -145,7 +145,7 @@ pub(super) fn parse_date(
     ))
 }
 
-pub(super) fn parse_version(word_reader: &mut WordReader) -> Result<Version, String> {
+pub(super) fn parse_version<R: std::io::Read>(word_reader: &mut WordReader<R>) -> Result<Version, String> {
     let mut version = String::new();
 
     loop {
@@ -162,8 +162,8 @@ pub(super) fn parse_version(word_reader: &mut WordReader) -> Result<Version, Str
     }
 }
 
-pub(super) fn parse_timescale(
-    word_reader: &mut WordReader,
+pub(super) fn parse_timescale<R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
 ) -> Result<(Option<u32>, Timescale), String> {
     // we might see `1ps $end` or `1 ps $end`
     // first get timescale
@@ -220,7 +220,7 @@ pub(super) fn parse_timescale(
     return Ok(timescale);
 }
 
-pub(super) fn parse_metadata(word_reader: &mut WordReader) -> Result<Metadata, String> {
+pub(super) fn parse_metadata<R: std::io::Read>(word_reader: &mut WordReader<R>) -> Result<Metadata, String> {
     let mut metadata = Metadata {
         date: None,
         version: None,

@@ -11,7 +11,7 @@ mod scopes;
 mod events;
 
 
-pub fn parse_vcd(file: File) -> Result<super::types::VCD, String> {
+pub fn parse_vcd(file: impl std::io::Read) -> Result<super::types::VCD, String> {
     let mut word_gen = super::reader::WordReader::new(file);
 
     let header = metadata::parse_metadata(&mut word_gen)?;

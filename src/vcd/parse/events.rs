@@ -12,8 +12,8 @@ use super::super::reader::{WordReader, Cursor, Line, Word, next_word};
 use super::super::types::{SignalIdx, VCD};
 
 
-pub(super) fn parse_events<'a>(
-    word_reader: &mut WordReader,
+pub(super) fn parse_events<'a, R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {

@@ -69,7 +69,10 @@ pub(super) fn tag<'a>(word: &'a str, pattern: &'a str) -> ParseResult<'a> {
     };
 }
 
-pub(super) fn ident(word_reader: &mut WordReader, keyword: &str) -> Result<(), String> {
+pub(super) fn ident<R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
+    keyword: &str,
+) -> Result<(), String> {
     // let keyword = "module";
     let (word, cursor) = next_word!(word_reader)?;
 

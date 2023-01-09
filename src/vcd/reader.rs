@@ -3,7 +3,6 @@
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
 use std::collections::VecDeque;
-use std::fs::File;
 use std::io;
 use std::io::BufRead;
 use std::slice;
@@ -16,8 +15,8 @@ pub(super) struct Word(pub(super) usize);
 #[derive(Debug, Clone)]
 pub(super) struct Cursor(pub(super) Line, pub(super) Word);
 
-pub(super) struct WordReader {
-    reader: io::BufReader<File>,
+pub(super) struct WordReader<R: io::Read> {
+    reader: io::BufReader<R>,
     eof: bool,
     buffers: Vec<String>,
     curr_line: usize,
@@ -25,11 +24,11 @@ pub(super) struct WordReader {
     curr_slice: Option<(*const u8, usize, Cursor)>,
 }
 
-impl WordReader {
-    pub(super) fn new(file: File) -> WordReader {
+impl<R: std::io::Read> WordReader<R> {
+    pub(super) fn new(file: R) -> WordReader<R> {
         let reader = io::BufReader::new(file);
         WordReader {
-            reader: reader,
+            reader,
             eof: false,
             buffers: vec![],
             curr_line: 0,

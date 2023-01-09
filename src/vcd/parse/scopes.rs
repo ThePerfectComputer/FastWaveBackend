@@ -15,8 +15,8 @@ use super::super::signal::{SigType, SignalEnum};
 use super::combinator_atoms::{tag, ident};
 use super::types::{ParseResult};
 
-pub(super) fn parse_var<'a>(
-    word_reader: &mut WordReader,
+pub(super) fn parse_var<'a, R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
     parent_scope_idx: ScopeIdx,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
@@ -157,8 +157,8 @@ pub(super) fn parse_var<'a>(
 
 /// Sometimes, variables can be listed outside of scopes.
 /// We call these orphaned vars.
-fn parse_orphaned_vars<'a>(
-    word_reader: &mut WordReader,
+fn parse_orphaned_vars<'a, R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
@@ -221,8 +221,8 @@ fn parse_orphaned_vars<'a>(
     Ok(())
 }
 
-fn parse_scopes_inner<'a>(
-    word_reader: &mut WordReader,
+fn parse_scopes_inner<'a, R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
     parent_scope_idx: Option<ScopeIdx>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
@@ -328,8 +328,8 @@ fn parse_scopes_inner<'a>(
     Ok(())
 }
 
-pub(super) fn parse_scopes<'a>(
-    word_reader: &mut WordReader,
+pub(super) fn parse_scopes<'a, R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
