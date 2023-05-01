@@ -63,7 +63,7 @@ impl<'a> Signal<'a> {
         &self,
         desired_time: &BigUint,
         vcd: &types::VCD,
-    ) -> Result<SignalValue, SignalErrors> {
+    ) -> Result<(TimeStamp, SignalValue), SignalErrors> {
         let Signal(signal_enum) = &self;
         let num_val = signal_enum
             .query_num_val_on_tmln(
@@ -84,14 +84,14 @@ impl<'a> Signal<'a> {
         match (num_val, str_val) {
             (Ok((num_val, num_time)), Ok((str_val, str_time))) => {
                 if num_time > str_time {
-                    Ok(SignalValue::BigUint(num_val))
+                    Ok((num_time, SignalValue::BigUint(num_val)))
                 }
                 else {
-                    Ok(SignalValue::String(str_val))
+                    Ok((str_time, SignalValue::String(str_val)))
                 }
             }
-            (Ok((num_val, _)), Err(_)) => Ok(SignalValue::BigUint(num_val)),
-            (Err(_), Ok((str_val, _))) => Ok(SignalValue::String(str_val)),
+            (Ok((num_val, time)), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
+            (Err(_), Ok((str_val, time))) => Ok((time, SignalValue::String(str_val))),
             (Err(e), _e) => Err(e)
         }
     }
