@@ -40,7 +40,6 @@ pub struct SignalIdx(pub usize);
 pub(super) struct Scope {
     pub(super) name: String,
 
-    pub(super) parent_idx: Option<ScopeIdx>,
     pub(super) self_idx: ScopeIdx,
 
     pub(super) child_signals: Vec<SignalIdx>,

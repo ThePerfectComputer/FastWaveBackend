@@ -20,6 +20,7 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
     parent_scope_idx: ScopeIdx,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
+    path: &Vec<String>,
 ) -> Result<(), String> {
     let (word, cursor) = next_word!(word_reader)?;
     let expected_types = [
@@ -120,7 +121,8 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
         Some(ref_signal_idx) => {
             let signal_idx = SignalIdx(vcd.all_signals.len());
             let signal = SignalEnum::Alias {
-                name: full_signal_name,
+                name: full_signal_name.clone(),
+                path: path.iter().cloned().chain([full_signal_name]).collect::<Vec<String>>(),
                 signal_alias: *ref_signal_idx,
             };
             (signal, signal_idx)
@@ -129,11 +131,12 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
             let signal_idx = SignalIdx(vcd.all_signals.len());
             signal_map.insert(signal_alias.to_string(), signal_idx);
             let signal = SignalEnum::Data {
-                name: full_signal_name,
+                name: full_signal_name.clone(),
+                path: path.iter().cloned().chain([full_signal_name]).collect::<Vec<String>>(),
                 sig_type: var_type,
                 signal_error: None,
-                num_bits: num_bits,
-                num_bytes: num_bytes,
+                num_bits,
+                num_bytes,
                 self_idx: signal_idx,
                 nums_encoded_as_fixed_width_le_u8: vec![],
                 string_vals: vec![],
@@ -141,7 +144,6 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
                 byte_len_of_num_tmstmp_vals_on_tmln: vec![],
                 byte_len_of_string_tmstmp_vals_on_tmln: vec![],
                 lsb_indxs_of_string_tmstmp_vals_on_tmln: vec![],
-                scope_parent: parent_scope_idx,
             };
             (signal, signal_idx)
         }
@@ -185,7 +187,6 @@ fn parse_orphaned_vars<'a, R: std::io::Read>(
     if !scope_already_exists {
         vcd.all_scopes.push(Scope {
             name: scope_name.to_string(),
-            parent_idx: None,
             self_idx: scope_idx,
             child_signals: vec![],
             child_scopes: vec![],
@@ -195,14 +196,14 @@ fn parse_orphaned_vars<'a, R: std::io::Read>(
 
     // we can go ahead and parse the current var as we've already encountered
     // "$var" before now.
-    parse_var(word_reader, scope_idx, vcd, signal_map)?;
+    parse_var(word_reader, scope_idx, vcd, signal_map, &vec![])?;
 
     loop {
         let (word, cursor) = next_word!(word_reader)?;
 
         match word {
             "$var" => {
-                parse_var(word_reader, scope_idx, vcd, signal_map)?;
+                parse_var(word_reader, scope_idx, vcd, signal_map, &vec![])?;
             }
             "$scope" => break,
             _ => {
@@ -226,6 +227,7 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     parent_scope_idx: Option<ScopeIdx>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
+    path: &Vec<String>
 ) -> Result<(), String> {
     // $scope module reg_mag_i $end
     //        ^^^^^^ - module keyword
@@ -249,6 +251,9 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     //               ^^^^^^^^^ - scope name
     let (scope_name, _) = next_word!(word_reader)?;
 
+    let mut path = path.clone();
+    path.push(scope_name.to_string());
+
     let curr_scope_idx = ScopeIdx(vcd.all_scopes.len());
 
     // register this scope as a child of the current parent scope
@@ -265,7 +270,6 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     // add this scope to list of existing scopes
     vcd.all_scopes.push(Scope {
         name: scope_name.to_string(),
-        parent_idx: parent_scope_idx,
         self_idx: curr_scope_idx,
         child_signals: vec![],
         child_scopes: vec![],
@@ -274,6 +278,8 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     // $scope module reg_mag_i $end
     //                         ^^^^ - end keyword
     ident(word_reader, "$end")?;
+
+
 
     loop {
         let (word, cursor) = next_word!(word_reader)?;
@@ -284,10 +290,10 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
                 match residual {
                     "scope" => {
                         // recursive - parse inside of current scope tree
-                        parse_scopes_inner(word_reader, Some(curr_scope_idx), vcd, signal_map)?;
+                        parse_scopes_inner(word_reader, Some(curr_scope_idx), vcd, signal_map, &path)?;
                     }
                     "var" => {
-                        parse_var(word_reader, curr_scope_idx, vcd, signal_map)?;
+                        parse_var(word_reader, curr_scope_idx, vcd, signal_map, &path)?;
                     }
                     "upscope" => {
                         ident(word_reader, "$end")?;
@@ -360,7 +366,7 @@ pub(super) fn parse_scopes<'a, R: std::io::Read>(
     }
 
     // now for the interesting part
-    parse_scopes_inner(word_reader, None, vcd, signal_map)?;
+    parse_scopes_inner(word_reader, None, vcd, signal_map, &vec![])?;
 
     // let err = format!("reached end of file without parser leaving {}", function_name!());
     let expected_keywords = ["$scope", "$enddefinitions"];
@@ -374,7 +380,7 @@ pub(super) fn parse_scopes<'a, R: std::io::Read>(
 
         match word {
             "$scope" => {
-                parse_scopes_inner(word_reader, None, vcd, signal_map)?;
+                parse_scopes_inner(word_reader, None, vcd, signal_map, &vec![])?;
             }
             "$enddefinitions" => {
                 ident(word_reader, "$end")?;

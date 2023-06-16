@@ -2,9 +2,9 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::types::{ScopeIdx, SignalIdx};
+use super::types::SignalIdx;
 use super::types;
-use num::{BigUint};
+use num::BigUint;
 
 // Index to the least significant byte of a timestamp
 // value on the timeline
@@ -35,6 +35,13 @@ impl<'a> Signal<'a> {
     pub fn name(&self) -> String {
         let Signal(signal_enum) = &self;
         signal_enum.name()
+    }
+
+    pub fn path(&self) -> &[String] {
+        match self.0 {
+            SignalEnum::Data {path, ..} => path,
+            SignalEnum::Alias { path, .. } => path,
+        }
     }
 
     pub fn num_bits(&self) -> Option<u16> {
@@ -101,6 +108,7 @@ impl<'a> Signal<'a> {
 pub(super) enum SignalEnum {
     Data {
         name: String,
+        path: Vec<String>,
         sig_type: SigType,
         /// I've seen a 0 bit signal parameter in a xilinx
         /// simulation before that gets assigned 1 bit values.
@@ -136,10 +144,10 @@ pub(super) enum SignalEnum {
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
         byte_len_of_string_tmstmp_vals_on_tmln: Vec<u8>,
         lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
-        scope_parent: ScopeIdx,
     },
     Alias {
         name: String,
+        path: Vec<String>,
         signal_alias: SignalIdx,
     },
 }
@@ -305,7 +313,7 @@ impl SignalEnum {
         match self {
             SignalEnum::Data {num_bits, ..} => num_bits.clone(),
             // TODO: Follow aliases?
-            SignalEnum::Alias { name, signal_alias } => None,
+            SignalEnum::Alias { .. } => None,
         }
     }
 }
@@ -329,6 +337,7 @@ impl SignalEnum {
             Self::Alias {
                 name: _,
                 signal_alias,
+                path: _
             } => {
                 let SignalIdx(idx) = signal_alias;
                 *idx
@@ -443,6 +452,7 @@ impl SignalEnum {
             }
             Self::Alias {
                 name: _,
+                path: _,
                 signal_alias,
             } => {
                 let SignalIdx(idx) = signal_alias;
