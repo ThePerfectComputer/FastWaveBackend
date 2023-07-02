@@ -5,6 +5,7 @@
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
 use chrono::prelude::{DateTime, Utc};
+use num::BigUint;
 use super::signal::{Signal, SignalEnum};
 
 #[derive(Debug)]
@@ -29,17 +30,16 @@ pub struct Metadata {
 }
 
 // We do a lot of arena allocation in this codebase.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ScopeIdx(pub usize);
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SignalIdx(pub usize);
 
 #[derive(Debug)]
 pub(super) struct Scope {
     pub(super) name: String,
 
-    pub(super) parent_idx: Option<ScopeIdx>,
     pub(super) self_idx: ScopeIdx,
 
     pub(super) child_signals: Vec<SignalIdx>,
@@ -63,6 +63,7 @@ pub struct VCD {
     pub(super) all_signals: Vec<SignalEnum>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
+    pub(super) largest_timestamp: Option<BigUint>
 }
 
 impl VCD {
@@ -120,5 +121,9 @@ impl VCD {
                 line!()
             )),
         }
+    }
+
+    pub fn max_timestamp(&self) -> &Option<BigUint> {
+        &self.largest_timestamp
     }
 }
