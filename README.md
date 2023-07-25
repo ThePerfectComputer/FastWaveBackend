@@ -1,7 +1,8 @@
 Copyright - Yehowshua Immanuel
 
 # Status
-October 20, 2022: I'm currently working on the frontend UI, and then will clean+speed up some of the backend code.
+July 25 2022: Haven't worked on  this in a while. It seems the Zoq is now pushing forward on this codebase.
+Check out his frontend here: https://gitlab.com/TheZoq2/surfer
 
 # A High performance, VCD Parser written in Rust
 
