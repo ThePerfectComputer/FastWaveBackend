@@ -2,7 +2,7 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use chrono::prelude::{DateTime, Utc, TimeZone};
+use chrono::prelude::{DateTime, Utc};
 use itertools::Itertools;
 
 use super::super::reader::{Cursor, WordReader, next_word};
@@ -133,9 +133,9 @@ pub(super) fn parse_date(
     // unfortunately, the minutes, seconds, and hour could occur in an
     // unexpected order
     let full_date = format!("{day} {month} {date} {hh}:{mm}:{ss} {year}");
-    let full_date = Utc.datetime_from_str(full_date.as_str(), "%a %b %e %T %Y");
+    let full_date = DateTime::parse_from_str(full_date.as_str(), "%a %b %e %T %Y");
     if full_date.is_ok() {
-        return Ok(full_date.unwrap());
+        return Ok(full_date.unwrap().into());
     }
 
     Err(format!(
