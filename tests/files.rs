@@ -5,7 +5,7 @@
 
 // TODO: we should eventually be able to only test on just
 // the files const
-pub const FILES : [&str; 30] = [
+pub const FILES : [&str; 31] = [
     "./tests/vcd-files/aldec/SPI_Write.vcd",
     "./tests/vcd-files/ghdl/alu.vcd",
     "./tests/vcd-files/ghdl/idea.vcd",
@@ -36,7 +36,8 @@ pub const FILES : [&str; 30] = [
     "./tests/vcd-files/xilinx_isim/test.vcd",
     "./tests/vcd-files/xilinx_isim/test1.vcd",
     // TODO : add signal ignore list to handle bitwidth mismatches
-    "./tests/vcd-files/xilinx_isim/test2x2_regex22_string1.vcd"
+    "./tests/vcd-files/xilinx_isim/test2x2_regex22_string1.vcd",
+    "./tests/vcd-files/scope_with_comment.vcd",
 ];
 
 pub const GOOD_DATE_FILES : [&str; 24] = [
