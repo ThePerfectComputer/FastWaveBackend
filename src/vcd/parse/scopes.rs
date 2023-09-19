@@ -386,7 +386,7 @@ pub(super) fn parse_scopes<'a, R: std::io::Read>(
                 ident(word_reader, "$end")?;
                 break;
             }
-            "comment" => {
+            "$comment" => {
                 // although we don't store comments, we still need to advance the
                 // word_reader cursor to the end of the comment
                 loop {
