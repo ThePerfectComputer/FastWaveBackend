@@ -2,8 +2,8 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
-use super::types::SignalIdx;
 use super::types;
+use super::types::SignalIdx;
 use num::BigUint;
 
 // Index to the least significant byte of a timestamp
@@ -39,8 +39,15 @@ impl<'a> Signal<'a> {
 
     pub fn path(&self) -> &[String] {
         match self.0 {
-            SignalEnum::Data {path, ..} => path,
+            SignalEnum::Data { path, .. } => path,
             SignalEnum::Alias { path, .. } => path,
+        }
+    }
+
+    pub fn real_idx(&self) -> SignalIdx {
+        match self.0 {
+            SignalEnum::Data { self_idx, .. } => *self_idx,
+            SignalEnum::Alias { signal_alias, .. } => *signal_alias,
         }
     }
 
@@ -55,7 +62,9 @@ impl<'a> Signal<'a> {
         vcd: &types::VCD,
     ) -> Result<String, SignalErrors> {
         let Signal(signal_enum) = &self;
-        signal_enum.query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals).map(|(val, _)| val)
+        signal_enum
+            .query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
+            .map(|(val, _)| val)
     }
     pub fn query_num_val_on_tmln(
         &self,
@@ -63,7 +72,9 @@ impl<'a> Signal<'a> {
         vcd: &types::VCD,
     ) -> Result<BigUint, SignalErrors> {
         let Signal(signal_enum) = &self;
-        signal_enum.query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals).map(|(val, _)| val)
+        signal_enum
+            .query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
+            .map(|(val, _)| val)
     }
 
     pub fn query_val_on_tmln(
@@ -72,18 +83,16 @@ impl<'a> Signal<'a> {
         vcd: &types::VCD,
     ) -> Result<(TimeStamp, SignalValue), SignalErrors> {
         let Signal(signal_enum) = &self;
-        let num_val = signal_enum
-            .query_num_val_on_tmln(
-                desired_time,
-                &vcd.tmstmps_encoded_as_u8s,
-                &vcd.all_signals
-            );
-        let str_val = signal_enum
-            .query_string_val_on_tmln(
-                desired_time,
-                &vcd.tmstmps_encoded_as_u8s,
-                &vcd.all_signals
-            );
+        let num_val = signal_enum.query_num_val_on_tmln(
+            desired_time,
+            &vcd.tmstmps_encoded_as_u8s,
+            &vcd.all_signals,
+        );
+        let str_val = signal_enum.query_string_val_on_tmln(
+            desired_time,
+            &vcd.tmstmps_encoded_as_u8s,
+            &vcd.all_signals,
+        );
 
         // Both num and str will return the newest value that is closest to
         // the desired time. If both have valid values, select the most recent
@@ -92,14 +101,13 @@ impl<'a> Signal<'a> {
             (Ok((num_val, num_time)), Ok((str_val, str_time))) => {
                 if num_time > str_time {
                     Ok((num_time, SignalValue::BigUint(num_val)))
-                }
-                else {
+                } else {
                     Ok((str_time, SignalValue::String(str_val)))
                 }
             }
             (Ok((num_val, time)), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
             (Err(_), Ok((str_val, time))) => Ok((time, SignalValue::String(str_val))),
-            (Err(e), _e) => Err(e)
+            (Err(e), _e) => Err(e),
         }
     }
 }
@@ -122,23 +130,23 @@ pub(super) enum SignalEnum {
         /// A signal may take on a new value and hold that value
         /// for sometime. We only need to record the value of a signal
         /// when it changes(the is what VCDs tend to do).
-        /// A signal may need x amount of bytes to record its largest 
-        /// possible value, so we record every single value of a given 
+        /// A signal may need x amount of bytes to record its largest
+        /// possible value, so we record every single value of a given
         /// signal as a sequence of x number of u8s.
         /// For example, we might find that `my_signal.
         /// nums_encoded_as_fixed_width_le_u8`
         /// has two 32 bit values, namely, 1 and 2, encoded as follows:
-        /// my_signal.nums_encoded_as_fixed_width_le_u8 = vec![1u8, 0u8, 
+        /// my_signal.nums_encoded_as_fixed_width_le_u8 = vec![1u8, 0u8,
         /// 0u8, 0u8, 2u8, 0u8, 0u8, 0u8];
         nums_encoded_as_fixed_width_le_u8: Vec<u8>,
         string_vals: Vec<String>,
-        /// we could do Vec<(LsbIdxOfTmstmpValOnTmln, u8)>, but I 
-        /// suspect that Vec<LsbIdxOfTmstmpValOnTmln> is more cache 
-        /// friendly. We use ``LsbIdxOfTmstmpValOnTmln`` to index into 
-        /// the LSB of a particular timestamp encoded as the 
-        /// minimum length u8 sequence within 
+        /// we could do Vec<(LsbIdxOfTmstmpValOnTmln, u8)>, but I
+        /// suspect that Vec<LsbIdxOfTmstmpValOnTmln> is more cache
+        /// friendly. We use ``LsbIdxOfTmstmpValOnTmln`` to index into
+        /// the LSB of a particular timestamp encoded as the
+        /// minimum length u8 sequence within
         /// ``vcd.tmstmps_encoded_as_u8s``, and we use the values in
-        /// ``byte_len_of_num_tmstmp_vals_on_tmln`` to determine how 
+        /// ``byte_len_of_num_tmstmp_vals_on_tmln`` to determine how
         /// many u8 values a particular timestamp is composed of.
         lsb_indxs_of_num_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
@@ -179,11 +187,11 @@ type SignalValNum = BigUint;
 impl SignalEnum {
     pub fn name(&self) -> String {
         match self {
-            SignalEnum::Data { name, ..} => name,
-            SignalEnum::Alias { name, .. } => name
-        }.clone()
+            SignalEnum::Data { name, .. } => name,
+            SignalEnum::Alias { name, .. } => name,
+        }
+        .clone()
     }
-
 }
 
 // helper functions ultimately used by Signal's query functions later on
@@ -256,8 +264,8 @@ impl SignalEnum {
     /// global timeline field of a VCD struct instance) and computes
     /// the time pointed at by event_idx.
     /// This function also uses the same idx to index into the
-    /// nums_encoded_as_fixed_width_le_u8 and 
-    /// byte_len_of_num_tmstmp_vals_on_tmln fields of an instance 
+    /// nums_encoded_as_fixed_width_le_u8 and
+    /// byte_len_of_num_tmstmp_vals_on_tmln fields of an instance
     /// of the Signal::Data variant to compute the signal's corresponding
     /// numerical value at the time pointed at by event_didx.
     /// The function returns a tuple of the timestamp and numerical
@@ -311,7 +319,7 @@ impl SignalEnum {
 
     fn bits_required(&self) -> Option<u16> {
         match self {
-            SignalEnum::Data {num_bits, ..} => num_bits.clone(),
+            SignalEnum::Data { num_bits, .. } => num_bits.clone(),
             // TODO: Follow aliases?
             SignalEnum::Alias { .. } => None,
         }
@@ -337,7 +345,7 @@ impl SignalEnum {
             Self::Alias {
                 name: _,
                 signal_alias,
-                path: _
+                path: _,
             } => {
                 let SignalIdx(idx) = signal_alias;
                 *idx
@@ -350,20 +358,15 @@ impl SignalEnum {
         // 2. the vector of indices into timeline where events occur
         //    for this signal
         // else we propagate Err(..).
-        let (string_vals, lsb_indxs_of_string_tmstmp_vals_on_tmln) =
-            match &all_signals[signal_idx] {
-                SignalEnum::Data {
-                    ref string_vals,
-                    ref lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                    ..
-                } => {
-                    Ok((
-                        string_vals,
-                        lsb_indxs_of_string_tmstmp_vals_on_tmln,
-                    ))
-                }
-                SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
-            }?;
+        let (string_vals, lsb_indxs_of_string_tmstmp_vals_on_tmln) = match &all_signals[signal_idx]
+        {
+            SignalEnum::Data {
+                ref string_vals,
+                ref lsb_indxs_of_string_tmstmp_vals_on_tmln,
+                ..
+            } => Ok((string_vals, lsb_indxs_of_string_tmstmp_vals_on_tmln)),
+            SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
+        }?;
         // this signal should at least have some events, otherwise, trying to index into
         // an empty vector later on would fail
         if lsb_indxs_of_string_tmstmp_vals_on_tmln.is_empty() {
