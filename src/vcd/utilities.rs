@@ -7,6 +7,10 @@ pub(super) enum BinaryParserErrTypes {
     XValue,
     ZValue,
     UValue,
+    HValue,
+    LValue,
+    DashValue,
+    WValue,
     OtherValue(char),
     TooLong,
 }
@@ -39,6 +43,10 @@ fn base2_str_to_byte(word: &[u8]) -> Result<u8, BinaryParserErrTypes> {
             b'x' | b'X' => return Err(BinaryParserErrTypes::XValue),
             b'z' | b'Z' => return Err(BinaryParserErrTypes::ZValue),
             b'u' | b'U' => return Err(BinaryParserErrTypes::UValue),
+            b'l' | b'L' => return Err(BinaryParserErrTypes::LValue),
+            b'h' | b'H' => return Err(BinaryParserErrTypes::HValue),
+            b'w' | b'W' => return Err(BinaryParserErrTypes::WValue),
+            b'-' => return Err(BinaryParserErrTypes::DashValue),
             _ => return Err(BinaryParserErrTypes::OtherValue(*chr as char)),
         }
     }

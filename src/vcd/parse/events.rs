@@ -96,7 +96,11 @@ pub(super) fn parse_events<'a, R: std::io::Read>(
                     Err(
                         BinaryParserErrTypes::XValue
                         | BinaryParserErrTypes::ZValue
-                        | BinaryParserErrTypes::UValue,
+                        | BinaryParserErrTypes::UValue
+                        | BinaryParserErrTypes::WValue
+                        | BinaryParserErrTypes::HValue
+                        | BinaryParserErrTypes::DashValue
+                        | BinaryParserErrTypes::LValue,
                     ) => {
                         store_as_string = true;
                         value_string = binary_value.to_string();
@@ -408,7 +412,7 @@ pub(super) fn parse_events<'a, R: std::io::Read>(
             }
 
             // // other one bit cases
-            "x" | "X" | "z" | "Z" | "u" | "U" => {
+            "x" | "X" | "z" | "Z" | "u" | "U" | "h" | "H" | "l" | "L" | "w" | "W" | "-" => {
                 let val = word.to_string();
                 // lokup signal idx
                 let hash = &word[1..];
