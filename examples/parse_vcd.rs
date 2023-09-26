@@ -18,14 +18,17 @@ fn main() -> std::io::Result<()> {
     let args = Cli::parse();
 
     use std::time::Instant;
-    
+
     let now = Instant::now();
     let file = File::open(&args.path)?;
     parse_vcd(file).unwrap();
     let elapsed = now.elapsed();
 
-    println!("Parsed VCD file {} : {:.2?}", &args.path.as_os_str().to_str().unwrap(), elapsed);
-
+    println!(
+        "Parsed VCD file {} : {:.2?}",
+        &args.path.as_os_str().to_str().unwrap(),
+        elapsed
+    );
 
     Ok(())
 }

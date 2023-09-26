@@ -5,15 +5,14 @@
 
 /// part of the vcd parser that handles parsing the signal tree and
 /// building the resulting signal tree
-
 use std::collections::HashMap;
 
-use super::super::reader::{WordReader, next_word, curr_word};
-use super::super::types::{VCD, Scope, ScopeIdx, SignalIdx};
+use super::super::reader::{curr_word, next_word, WordReader};
 use super::super::signal::{SigType, SignalEnum};
+use super::super::types::{Scope, ScopeIdx, SignalIdx, VCD};
 
-use super::combinator_atoms::{tag, ident};
-use super::types::{ParseResult};
+use super::combinator_atoms::{ident, tag};
+use super::types::ParseResult;
 
 pub(super) fn parse_var<'a, R: std::io::Read>(
     word_reader: &mut WordReader<R>,
@@ -98,7 +97,7 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
         let (word, _) = next_word!(word_reader)?;
         match word {
             "$end" => break,
-            _ => full_signal_name.push(word.to_string())
+            _ => full_signal_name.push(word.to_string()),
         }
     }
     let full_signal_name = full_signal_name.join(" ");
@@ -118,7 +117,11 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
             let signal_idx = SignalIdx(vcd.all_signals.len());
             let signal = SignalEnum::Alias {
                 name: full_signal_name.clone(),
-                path: path.iter().cloned().chain([full_signal_name]).collect::<Vec<String>>(),
+                path: path
+                    .iter()
+                    .cloned()
+                    .chain([full_signal_name])
+                    .collect::<Vec<String>>(),
                 signal_alias: *ref_signal_idx,
             };
             (signal, signal_idx)
@@ -128,7 +131,11 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
             signal_map.insert(signal_alias.to_string(), signal_idx);
             let signal = SignalEnum::Data {
                 name: full_signal_name.clone(),
-                path: path.iter().cloned().chain([full_signal_name]).collect::<Vec<String>>(),
+                path: path
+                    .iter()
+                    .cloned()
+                    .chain([full_signal_name])
+                    .collect::<Vec<String>>(),
                 sig_type: var_type,
                 signal_error: None,
                 num_bits,
@@ -223,7 +230,7 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     parent_scope_idx: Option<ScopeIdx>,
     vcd: &'a mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
-    path: &Vec<String>
+    path: &Vec<String>,
 ) -> Result<(), String> {
     // $scope module reg_mag_i $end
     //        ^^^^^^ - module keyword
@@ -275,8 +282,6 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     //                         ^^^^ - end keyword
     ident(word_reader, "$end")?;
 
-
-
     loop {
         let (word, cursor) = next_word!(word_reader)?;
         let ParseResult { matched, residual } = tag(word, "$");
@@ -286,7 +291,13 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
                 match residual {
                     "scope" => {
                         // recursive - parse inside of current scope tree
-                        parse_scopes_inner(word_reader, Some(curr_scope_idx), vcd, signal_map, &path)?;
+                        parse_scopes_inner(
+                            word_reader,
+                            Some(curr_scope_idx),
+                            vcd,
+                            signal_map,
+                            &path,
+                        )?;
                     }
                     "var" => {
                         parse_var(word_reader, curr_scope_idx, vcd, signal_map, &path)?;

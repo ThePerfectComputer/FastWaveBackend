@@ -5,11 +5,11 @@
 use chrono::prelude::{DateTime, Utc};
 use itertools::Itertools;
 
-use super::super::reader::{Cursor, WordReader, next_word};
-use super::super::types::{Timescale, Version, Metadata};
+use super::super::reader::{next_word, Cursor, WordReader};
+use super::super::types::{Metadata, Timescale, Version};
 
-use super::combinator_atoms::{take_until, take_while, digit, tag};
-use super::types::{ParseResult};
+use super::combinator_atoms::{digit, tag, take_until, take_while};
+use super::types::ParseResult;
 
 pub(super) fn parse_date(
     word_and_ctx1: (&str, &Cursor),
@@ -145,7 +145,9 @@ pub(super) fn parse_date(
     ))
 }
 
-pub(super) fn parse_version<R: std::io::Read>(word_reader: &mut WordReader<R>) -> Result<Version, String> {
+pub(super) fn parse_version<R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
+) -> Result<Version, String> {
     let mut version = String::new();
 
     loop {
@@ -220,7 +222,9 @@ pub(super) fn parse_timescale<R: std::io::Read>(
     return Ok(timescale);
 }
 
-pub(super) fn parse_metadata<R: std::io::Read>(word_reader: &mut WordReader<R>) -> Result<Metadata, String> {
+pub(super) fn parse_metadata<R: std::io::Read>(
+    word_reader: &mut WordReader<R>,
+) -> Result<Metadata, String> {
     let mut metadata = Metadata {
         date: None,
         version: None,

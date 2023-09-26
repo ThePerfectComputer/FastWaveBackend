@@ -4,18 +4,20 @@
 // the root of the folder containing the sources for this program.
 use std::fs::File;
 
-use fastwave_backend::{ScopeIdx, VCD, parse_vcd, SignalIdx};
+use fastwave_backend::{parse_vcd, ScopeIdx, SignalIdx, VCD};
 
-fn indented_print(indent : u8, name : &String) {
-    for _ in 0..indent {print!("  |");}
+fn indented_print(indent: u8, name: &String) {
+    for _ in 0..indent {
+        print!("  |");
+    }
     print!("---");
     println!("{name}");
 }
 
-// TODO: refactor into more general visitor pattern that takes a 
+// TODO: refactor into more general visitor pattern that takes a
 // function as an argument.
 fn visit_all_scopes(vcd: &VCD) {
-    fn visit_all_scope_children(root_idx: ScopeIdx, vcd: &VCD, indent : u8) {
+    fn visit_all_scope_children(root_idx: ScopeIdx, vcd: &VCD, indent: u8) {
         if vcd.child_scopes_by_idx(root_idx).is_empty() {
         } else {
             for child_scope_idx in vcd.child_scopes_by_idx(root_idx) {
@@ -36,9 +38,8 @@ fn visit_all_scopes(vcd: &VCD) {
 }
 
 fn main() -> std::io::Result<()> {
-
     use std::time::Instant;
-    
+
     // we start by printing out the entire signal tree of
     // a parsed VCD
     let now = Instant::now();
@@ -53,8 +54,7 @@ fn main() -> std::io::Result<()> {
     println!("Done Printing Scopes");
     println!();
 
-
-    // we then parse another VCD, print its signal tree and 
+    // we then parse another VCD, print its signal tree and
     // query some values on its timeline
     let now = Instant::now();
     let file_path = "tests/vcd-files/amaranth/up_counter.vcd";
@@ -73,11 +73,8 @@ fn main() -> std::io::Result<()> {
     let timestamps = vec![31499_000u32, 31500_000u32, 57760_000u32];
     for timestamp in timestamps {
         let time = num::BigUint::from(timestamp);
-        let val = state_signal
-                    .query_string_val_on_tmln(&time, &vcd)
-                    .unwrap();
+        let val = state_signal.query_string_val_on_tmln(&time, &vcd).unwrap();
         println!("Signal `{name}` has value `{val}` at time `{time}`");
-
     }
 
     Ok(())

@@ -3,14 +3,13 @@
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
 
-use std::collections::HashMap;
 use num::BigUint;
+use std::collections::HashMap;
 
-use super::super::utilities::{BinaryParserErrTypes, binary_str_to_vec_u8};
-use super::super::signal::{SignalEnum, LsbIdxOfTmstmpValOnTmln};
-use super::super::reader::{WordReader, Cursor, Line, Word, next_word};
+use super::super::reader::{next_word, Cursor, Line, Word, WordReader};
+use super::super::signal::{LsbIdxOfTmstmpValOnTmln, SignalEnum};
 use super::super::types::{SignalIdx, VCD};
-
+use super::super::utilities::{binary_str_to_vec_u8, BinaryParserErrTypes};
 
 pub(super) fn parse_events<'a, R: std::io::Read>(
     word_reader: &mut WordReader<R>,

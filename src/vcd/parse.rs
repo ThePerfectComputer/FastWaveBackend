@@ -4,11 +4,10 @@
 // the root of the folder containing the sources for this program.
 
 mod combinator_atoms;
-mod types;
+mod events;
 mod metadata;
 mod scopes;
-mod events;
-
+mod types;
 
 pub fn parse_vcd(file: impl std::io::Read) -> Result<super::types::VCD, String> {
     let mut word_gen = super::reader::WordReader::new(file);
@@ -26,7 +25,7 @@ pub fn parse_vcd(file: impl std::io::Read) -> Result<super::types::VCD, String> 
         all_signals: vec![],
         all_scopes: vec![],
         root_scopes: vec![],
-        largest_timestamp: None
+        largest_timestamp: None,
     };
 
     scopes::parse_scopes(&mut word_gen, &mut vcd, &mut signal_map)?;
