@@ -14,10 +14,10 @@ use super::super::types::{Scope, ScopeIdx, SignalIdx, VCD};
 use super::combinator_atoms::{ident, tag};
 use super::types::ParseResult;
 
-pub(super) fn parse_var<'a, R: std::io::Read>(
+pub(super) fn parse_var<R: std::io::Read>(
     word_reader: &mut WordReader<R>,
     parent_scope_idx: ScopeIdx,
-    vcd: &'a mut VCD,
+    vcd: &mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
     path: &Vec<String>,
 ) -> Result<(), String> {
@@ -70,7 +70,9 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
         | SigType::Wire
         | SigType::Tri1
         | SigType::Time => {
-            let num_bits = word.parse::<usize>().expect(parse_err.as_str());
+            let num_bits = word
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("{}", parse_err));
             let num_bits = u16::try_from(num_bits).map_err(|_| {
                 format!(
                     "Error near {}:{} while parsing vcd file at {cursor:?}. \
@@ -162,9 +164,9 @@ pub(super) fn parse_var<'a, R: std::io::Read>(
 
 /// Sometimes, variables can be listed outside of scopes.
 /// We call these orphaned vars.
-fn parse_orphaned_vars<'a, R: std::io::Read>(
+fn parse_orphaned_vars<R: std::io::Read>(
     word_reader: &mut WordReader<R>,
-    vcd: &'a mut VCD,
+    vcd: &mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
     // create scope for unscoped signals if such a scope does not
@@ -225,10 +227,10 @@ fn parse_orphaned_vars<'a, R: std::io::Read>(
     Ok(())
 }
 
-fn parse_scopes_inner<'a, R: std::io::Read>(
+fn parse_scopes_inner<R: std::io::Read>(
     word_reader: &mut WordReader<R>,
     parent_scope_idx: Option<ScopeIdx>,
-    vcd: &'a mut VCD,
+    vcd: &mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
     path: &Vec<String>,
 ) -> Result<(), String> {
@@ -341,9 +343,9 @@ fn parse_scopes_inner<'a, R: std::io::Read>(
     Ok(())
 }
 
-pub(super) fn parse_scopes<'a, R: std::io::Read>(
+pub(super) fn parse_scopes<R: std::io::Read>(
     word_reader: &mut WordReader<R>,
-    vcd: &'a mut VCD,
+    vcd: &mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
     // get the current word

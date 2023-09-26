@@ -85,7 +85,7 @@ impl VCD {
         let scope = &self.all_scopes[idx];
         &scope.name
     }
-    pub fn signal_from_signal_idx<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
+    pub fn signal_from_signal_idx(&self, idx: SignalIdx) -> Signal<'_> {
         let SignalIdx(idx) = idx;
         let signal_enum = &self.all_signals[idx];
         return Signal(signal_enum);

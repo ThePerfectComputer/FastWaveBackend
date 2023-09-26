@@ -159,7 +159,7 @@ pub(super) fn parse_version<R: std::io::Read>(
             return Ok(Version(version));
         } else {
             version.push_str(word);
-            version.push_str(" ");
+            version.push(' ');
         }
     }
 }
@@ -179,7 +179,7 @@ pub(super) fn parse_timescale<R: std::io::Read>(
         .map_err(|e| format!("Error near {}:{}. {e}", file!(), line!()))?;
 
     let timescale = {
-        if residual == "" {
+        if residual.is_empty() {
             let (word, _) = next_word!(word_reader)?;
             let unit = match word {
                 "fs" => Ok(Timescale::Fs),
@@ -219,7 +219,7 @@ pub(super) fn parse_timescale<R: std::io::Read>(
     let (word, _) = next_word!(word_reader)?;
     tag(word, "$end").assert_match()?;
 
-    return Ok(timescale);
+    Ok(timescale)
 }
 
 pub(super) fn parse_metadata<R: std::io::Read>(
@@ -331,5 +331,5 @@ pub(super) fn parse_metadata<R: std::io::Read>(
             _ => {}
         }
     }
-    return Ok(metadata);
+    Ok(metadata)
 }

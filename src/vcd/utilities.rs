@@ -38,7 +38,7 @@ fn base2_str_to_byte(word: &[u8]) -> Result<u8, BinaryParserErrTypes> {
 
     for (idx, chr) in word.iter().rev().enumerate() {
         match chr {
-            b'1' => val = bit_lut[idx] | val,
+            b'1' => val |= bit_lut[idx],
             b'0' => {}
             b'x' | b'X' => return Err(BinaryParserErrTypes::XValue),
             b'z' | b'Z' => return Err(BinaryParserErrTypes::ZValue),
@@ -73,13 +73,13 @@ pub(super) fn binary_str_to_vec_u8(binary_str: &str) -> Result<Vec<u8>, BinaryPa
         if head_idx < 8 {
             head_idx = 0
         } else {
-            head_idx = head_idx - 8;
+            head_idx -= 8;
         }
 
         if tail_idx < 8 {
             tail_idx = 0
         } else {
-            tail_idx = tail_idx - 8;
+            tail_idx -= 8;
         }
     }
     Ok(vec_u8)

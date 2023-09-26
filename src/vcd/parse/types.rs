@@ -10,18 +10,18 @@ pub(super) struct ParseResult<'a> {
 
 impl<'a> ParseResult<'a> {
     pub(super) fn assert_match(&self) -> Result<&str, String> {
-        if self.matched == "" {
-            return Err("no match".to_string());
+        if self.matched.is_empty() {
+            Err("no match".to_string())
         } else {
-            return Ok(self.matched);
+            Ok(self.matched)
         }
     }
 
     pub(super) fn assert_residual(&self) -> Result<&str, String> {
-        if self.residual == "" {
-            return Err("no residual".to_string());
+        if self.residual.is_empty() {
+            Err("no residual".to_string())
         } else {
-            return Ok(self.residual);
+            Ok(self.residual)
         }
     }
 }

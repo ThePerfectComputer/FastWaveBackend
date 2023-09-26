@@ -11,9 +11,9 @@ use super::super::signal::{LsbIdxOfTmstmpValOnTmln, SignalEnum};
 use super::super::types::{SignalIdx, VCD};
 use super::super::utilities::{binary_str_to_vec_u8, BinaryParserErrTypes};
 
-pub(super) fn parse_events<'a, R: std::io::Read>(
+pub(super) fn parse_events<R: std::io::Read>(
     word_reader: &mut WordReader<R>,
-    vcd: &'a mut VCD,
+    vcd: &mut VCD,
     signal_map: &mut HashMap<String, SignalIdx>,
 ) -> Result<(), String> {
     let mut curr_tmstmp_lsb_idx = 0u32;
