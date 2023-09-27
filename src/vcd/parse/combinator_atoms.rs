@@ -6,15 +6,13 @@ use super::super::reader::{next_word, WordReader};
 use super::types::ParseResult;
 
 pub(super) fn digit(chr: u8) -> bool {
-    let zero = b'0' as u8;
-    let nine = b'9' as u8;
+    let zero = b'0';
+    let nine = b'9';
 
-    let between_zero_and_nine = (chr >= zero) && (nine >= chr);
-
-    return between_zero_and_nine;
+    (chr >= zero) && (nine >= chr)
 }
 
-pub(super) fn take_until<'a>(word: &'a str, pattern: u8) -> ParseResult<'a> {
+pub(super) fn take_until(word: &str, pattern: u8) -> ParseResult<'_> {
     let mut new_start = 0;
 
     for chr in word.as_bytes() {
@@ -25,13 +23,13 @@ pub(super) fn take_until<'a>(word: &'a str, pattern: u8) -> ParseResult<'a> {
         }
     }
 
-    return ParseResult {
+    ParseResult {
         matched: &word[0..new_start],
         residual: &word[new_start..],
-    };
+    }
 }
 
-pub(super) fn take_while<'a>(word: &'a str, cond: fn(u8) -> bool) -> ParseResult<'a> {
+pub(super) fn take_while(word: &str, cond: fn(u8) -> bool) -> ParseResult<'_> {
     let mut new_start = 0;
 
     for chr in word.as_bytes() {
@@ -42,10 +40,10 @@ pub(super) fn take_while<'a>(word: &'a str, cond: fn(u8) -> bool) -> ParseResult
         }
     }
 
-    return ParseResult {
+    ParseResult {
         matched: &word[0..new_start],
         residual: &word[new_start..],
-    };
+    }
 }
 
 pub(super) fn tag<'a>(word: &'a str, pattern: &'a str) -> ParseResult<'a> {
@@ -63,10 +61,10 @@ pub(super) fn tag<'a>(word: &'a str, pattern: &'a str) -> ParseResult<'a> {
         new_start += 1;
     }
 
-    return ParseResult {
+    ParseResult {
         matched: &word[0..new_start],
         residual: &word[new_start..],
-    };
+    }
 }
 
 pub(super) fn ident<R: std::io::Read>(
@@ -77,9 +75,9 @@ pub(super) fn ident<R: std::io::Read>(
     let (word, cursor) = next_word!(word_reader)?;
 
     if word == keyword {
-        return Ok(());
+        Ok(())
     } else {
         let err = format!("found keyword `{word}` but expected `{keyword}` on {cursor:?}");
-        return Err(err);
+        Err(err)
     }
 }

@@ -319,7 +319,7 @@ impl SignalEnum {
 
     fn bits_required(&self) -> Option<u16> {
         match self {
-            SignalEnum::Data { num_bits, .. } => num_bits.clone(),
+            SignalEnum::Data { num_bits, .. } => *num_bits,
             // TODO: Follow aliases?
             SignalEnum::Alias { .. } => None,
         }

@@ -4,9 +4,9 @@
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
 // the root of the folder containing the sources for this program.
+use super::signal::{Signal, SignalEnum};
 use chrono::prelude::{DateTime, Utc};
 use num::BigUint;
-use super::signal::{Signal, SignalEnum};
 
 #[derive(Debug)]
 pub struct Version(pub String);
@@ -63,7 +63,7 @@ pub struct VCD {
     pub(super) all_signals: Vec<SignalEnum>,
     pub(super) all_scopes: Vec<Scope>,
     pub(super) root_scopes: Vec<ScopeIdx>,
-    pub(super) largest_timestamp: Option<BigUint>
+    pub(super) largest_timestamp: Option<BigUint>,
 }
 
 impl VCD {
@@ -85,7 +85,7 @@ impl VCD {
         let scope = &self.all_scopes[idx];
         &scope.name
     }
-    pub fn signal_from_signal_idx<'a>(&'a self, idx: SignalIdx) -> Signal<'a> {
+    pub fn signal_from_signal_idx(&self, idx: SignalIdx) -> Signal<'_> {
         let SignalIdx(idx) = idx;
         let signal_enum = &self.all_signals[idx];
         return Signal(signal_enum);
@@ -106,7 +106,7 @@ impl VCD {
         // dereference signal if Signal::Alias, or keep idx if Signal::Data
         let signal_idx = match signal {
             SignalEnum::Data { self_idx, .. } => *self_idx,
-            SignalEnum::Alias {signal_alias, .. } => *signal_alias,
+            SignalEnum::Alias { signal_alias, .. } => *signal_alias,
         };
 
         // Should now  point to Signal::Data variant, or else there's an error

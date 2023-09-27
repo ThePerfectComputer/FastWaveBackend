@@ -5,7 +5,7 @@
 
 // TODO: we should eventually be able to only test on just
 // the files const
-pub const FILES : [&str; 31] = [
+pub const FILES: [&str; 31] = [
     "./tests/vcd-files/aldec/SPI_Write.vcd",
     "./tests/vcd-files/ghdl/alu.vcd",
     "./tests/vcd-files/ghdl/idea.vcd",
@@ -40,7 +40,7 @@ pub const FILES : [&str; 31] = [
     "./tests/vcd-files/scope_with_comment.vcd",
 ];
 
-pub const GOOD_DATE_FILES : [&str; 24] = [
+pub const GOOD_DATE_FILES: [&str; 24] = [
     "./test-vcd-files/aldec/SPI_Write.vcd",
     "./test-vcd-files/ghdl/alu.vcd",
     "./test-vcd-files/ghdl/idea.vcd",
@@ -64,10 +64,10 @@ pub const GOOD_DATE_FILES : [&str; 24] = [
     "./test-vcd-files/verilator/vlt_dump.vcd",
     "./test-vcd-files/xilinx_isim/test.vcd",
     "./test-vcd-files/xilinx_isim/test1.vcd",
-    "./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd"
+    "./test-vcd-files/xilinx_isim/test2x2_regex22_string1.vcd",
 ];
 
-pub const BAD_DATE_FILES : [&str; 6] = [
+pub const BAD_DATE_FILES: [&str; 6] = [
     "./test-vcd-files/ncsim/ffdiv_32bit_tb.vcd",
     "./test-vcd-files/quartus/mipsHardware.vcd",
     "./test-vcd-files/quartus/wave_registradores.vcd",
