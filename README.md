@@ -4,12 +4,12 @@ Copyright - Yehowshua Immanuel
 July 25 2023: Haven't worked on  this in a while. It seems the Zoq is now pushing forward on this codebase.
 Check out his frontend here: https://app.surfer-project.org/ (code at https://gitlab.com/surfer-project/surfer )
 
+Screenshot of surfer frontend below:
+<img width="1609" alt="image" src="https://github.com/ThePerfectComputer/FastWaveBackend/assets/103011002/63deffc0-98b0-405f-b093-74d10b422b01">
+
 # A High performance, VCD Parser written in Rust
 
-I have abandoned eGUI and will be building the following UI in 
-[Rust Tauri](https://github.com/ThePerfectComputer/FastWaveFrontend-Tauri).
-
-It should work just fine in Windows and Linux also.
+I hope for a GUI that eventually looks like the following...
 
 ![](assets/FastWaveMockup.png)
 
