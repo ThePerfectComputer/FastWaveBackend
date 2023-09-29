@@ -2,7 +2,7 @@ Copyright - Yehowshua Immanuel
 
 # Status
 July 25 2023: Haven't worked on  this in a while. It seems the Zoq is now pushing forward on this codebase.
-Check out his frontend here: https://app.surfer-project.org/ (code at https://gitlab.com/surfer-proj/surfer )
+Check out his frontend here: https://app.surfer-project.org/ (code at https://gitlab.com/surfer-project/surfer )
 
 # A High performance, VCD Parser written in Rust
 
