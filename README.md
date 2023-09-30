@@ -9,7 +9,9 @@ Since this project is written in Rust, it should also be able to run in the brow
 I hope to work on this more actively again soon.
 
 The Zoq is is working on an excellent frontend call the Surfer. Check it out 
-[here](https://app.surfer-project.org/ (code at https://gitlab.com/surfer-project/surfer)!
+[here](https://gitlab.com/surfer-project/surfer)!
+
+Browser demo: https://app.surfer-project.org/
 
 Screenshot of surfer frontend below:
 <img width="1609" alt="image" src="https://github.com/ThePerfectComputer/FastWaveBackend/assets/103011002/63deffc0-98b0-405f-b093-74d10b422b01">
