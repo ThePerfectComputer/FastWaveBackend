@@ -1,8 +1,15 @@
 Copyright - Yehowshua Immanuel
 
+# Vision
+Imagine being able to visualize a CPU pipeline diagram by merely loading a simulation waveform dump, sprinkling in a bit of code, and dragging and dropping some diagram blocks into the visualizer. This project aims to offer such an experience.
+
+Since this project is written in Rust, it should also be able to run in the browser via web-assembly.
+
 # Status
-July 25 2023: Haven't worked on  this in a while. It seems the Zoq is now pushing forward on this codebase.
-Check out his frontend here: https://app.surfer-project.org/ (code at https://gitlab.com/surfer-project/surfer )
+I hope to work on this more actively again soon.
+
+The Zoq is is working on an excellent frontend call the Surfer. Check it out 
+[here](https://app.surfer-project.org/ (code at https://gitlab.com/surfer-project/surfer)!
 
 Screenshot of surfer frontend below:
 <img width="1609" alt="image" src="https://github.com/ThePerfectComputer/FastWaveBackend/assets/103011002/63deffc0-98b0-405f-b093-74d10b422b01">
