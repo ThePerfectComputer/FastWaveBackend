@@ -238,7 +238,7 @@ fn parse_scopes_inner<R: std::io::Read>(
     //        ^^^^^^ - module keyword
     let (keyword, cursor) = next_word!(word_reader)?;
 
-    let expected = ["module", "begin", "task", "function"];
+    let expected = ["module", "begin", "task", "function", "fork"];
     if expected.contains(&keyword) {
         Ok(())
     } else {
