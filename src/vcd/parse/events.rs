@@ -85,9 +85,9 @@ pub(super) fn parse_events<R: std::io::Read>(
 
                 let mut store_as_string = false;
 
-                // If we encounter x or z in a value, we can recover from
+                // If we encounter other values than 0 or 1, we can recover from
                 // the error and store the value as a string.
-                // Or else, we we propagate up other errors.
+                // Or else, we propagate up other errors.
                 match binary_str_to_vec_u8(binary_value) {
                     Ok(result) => {
                         value_u8 = result;
@@ -102,7 +102,8 @@ pub(super) fn parse_events<R: std::io::Read>(
                         | BinaryParserErrTypes::LValue,
                     ) => {
                         store_as_string = true;
-                        value_string = binary_value.to_string();
+                        // Turn to lower case for consistency
+                        value_string = binary_value.to_ascii_lowercase();
                     }
                     Err(e) => {
                         let (f, l) = (file!(), line!());
@@ -410,9 +411,10 @@ pub(super) fn parse_events<R: std::io::Read>(
                 }?;
             }
 
-            // // other one bit cases
+            // other one bit cases
             "x" | "X" | "z" | "Z" | "u" | "U" | "h" | "H" | "l" | "L" | "w" | "W" | "-" => {
-                let val = word.to_string();
+                // Select value and turn to lowercase for consistency
+                let val = word[0..1].to_ascii_lowercase();
                 // lokup signal idx
                 let hash = &word[1..];
                 let signal_idx = signal_map.get(hash).ok_or(()).map_err(|_| {
