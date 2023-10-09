@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use super::super::reader::{curr_word, next_word, WordReader};
-use super::super::signal::{SigType, SignalEnum};
+use super::super::signal::{SignalEnum, SignalType};
 use super::super::types::{Scope, ScopeIdx, SignalIdx, VCD};
 
 use super::combinator_atoms::{ident, tag};
@@ -47,25 +47,25 @@ pub(super) fn parse_var<R: std::io::Read>(
     // $var parameter 3 a IDLE $end
     //      ^^^^^^^^^ - var_type
     let var_type = match word {
-        "event" => Ok(SigType::Event),
-        "integer" => Ok(SigType::Integer),
-        "parameter" => Ok(SigType::Parameter),
-        "real" => Ok(SigType::Real),
-        "realtime" => Ok(SigType::RealTime),
-        "reg" => Ok(SigType::Reg),
-        "string" => Ok(SigType::Str),
-        "supply0" => Ok(SigType::Supply0),
-        "supply1" => Ok(SigType::Supply1),
-        "tri" => Ok(SigType::Tri),
-        "triand" => Ok(SigType::TriAnd),
-        "trior" => Ok(SigType::TriOr),
-        "trireg" => Ok(SigType::TriReg),
-        "tri0" => Ok(SigType::Tri0),
-        "tri1" => Ok(SigType::Tri1),
-        "time" => Ok(SigType::Time),
-        "wand" => Ok(SigType::WAnd),
-        "wire" => Ok(SigType::Wire),
-        "wor" => Ok(SigType::WOr),
+        "event" => Ok(SignalType::Event),
+        "integer" => Ok(SignalType::Integer),
+        "parameter" => Ok(SignalType::Parameter),
+        "real" => Ok(SignalType::Real),
+        "realtime" => Ok(SignalType::RealTime),
+        "reg" => Ok(SignalType::Reg),
+        "string" => Ok(SignalType::Str),
+        "supply0" => Ok(SignalType::Supply0),
+        "supply1" => Ok(SignalType::Supply1),
+        "tri" => Ok(SignalType::Tri),
+        "triand" => Ok(SignalType::TriAnd),
+        "trior" => Ok(SignalType::TriOr),
+        "trireg" => Ok(SignalType::TriReg),
+        "tri0" => Ok(SignalType::Tri0),
+        "tri1" => Ok(SignalType::Tri1),
+        "time" => Ok(SignalType::Time),
+        "wand" => Ok(SignalType::WAnd),
+        "wire" => Ok(SignalType::Wire),
+        "wor" => Ok(SignalType::WOr),
         _ => {
             let err = format!(
                 "Error near {}:{} \
@@ -85,13 +85,22 @@ pub(super) fn parse_var<R: std::io::Read>(
     // $var parameter 3 a IDLE $end
     //                ^ - num_bits
     let num_bits = match var_type {
-        SigType::Integer
-        | SigType::Parameter
-        | SigType::Real
-        | SigType::Reg
-        | SigType::Wire
-        | SigType::Tri1
-        | SigType::Time => {
+        SignalType::Event
+        | SignalType::Integer
+        | SignalType::Parameter
+        | SignalType::Reg
+        | SignalType::Supply0
+        | SignalType::Supply1
+        | SignalType::Tri
+        | SignalType::TriAnd
+        | SignalType::TriOr
+        | SignalType::TriReg
+        | SignalType::Tri0
+        | SignalType::Tri1
+        | SignalType::Time
+        | SignalType::WAnd
+        | SignalType::Wire
+        | SignalType::WOr => {
             let num_bits = word
                 .parse::<usize>()
                 .unwrap_or_else(|_| panic!("{}", parse_err));
@@ -105,7 +114,7 @@ pub(super) fn parse_var<R: std::io::Read>(
             })?;
             Some(num_bits)
         }
-        // for strings, we don't really care what the number of bits is
+        // for strings, reals, and realtimes we don't really care what the number of bits is
         _ => None,
     };
 
@@ -160,7 +169,7 @@ pub(super) fn parse_var<R: std::io::Read>(
                     .cloned()
                     .chain([full_signal_name])
                     .collect::<Vec<String>>(),
-                sig_type: var_type,
+                signal_type: var_type,
                 signal_error: None,
                 num_bits,
                 num_bytes,

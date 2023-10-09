@@ -11,8 +11,8 @@ use num::BigUint;
 #[derive(Debug, Copy, Clone)]
 pub struct LsbIdxOfTmstmpValOnTmln(pub(super) u32);
 
-#[derive(Debug)]
-pub enum SigType {
+#[derive(Debug, Eq, PartialEq)]
+pub enum SignalType {
     Event,
     Integer,
     Parameter,
@@ -53,6 +53,11 @@ impl<'a> Signal<'a> {
             SignalEnum::Data { path, .. } => path,
             SignalEnum::Alias { path, .. } => path,
         }
+    }
+
+    pub fn signal_type(&self) -> Option<&SignalType> {
+        let Signal(signal_enum) = &self;
+        signal_enum.signal_type()
     }
 
     pub fn real_idx(&self) -> SignalIdx {
@@ -129,7 +134,7 @@ pub(super) enum SignalEnum {
     Data {
         name: String,
         path: Vec<String>,
-        sig_type: SigType,
+        signal_type: SignalType,
         /// I've seen a 0 bit signal parameter in a xilinx
         /// simulation before that gets assigned 1 bit values.
         /// I consider this to be bad behavior. We capture such
@@ -201,6 +206,15 @@ impl SignalEnum {
         match self {
             SignalEnum::Data { name, .. } => name,
             SignalEnum::Alias { name, .. } => name,
+        }
+        .clone()
+    }
+
+    pub fn signal_type(&self) -> Option<&SignalType> {
+        match self {
+            SignalEnum::Data { signal_type, .. } => Some(signal_type),
+            // TODO: Follow aliases?
+            SignalEnum::Alias { .. } => None,
         }
         .clone()
     }
