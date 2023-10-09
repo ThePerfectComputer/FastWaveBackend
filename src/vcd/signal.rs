@@ -13,14 +13,25 @@ pub struct LsbIdxOfTmstmpValOnTmln(pub(super) u32);
 
 #[derive(Debug)]
 pub enum SigType {
+    Event,
     Integer,
     Parameter,
     Real,
+    RealTime,
     Reg,
     Str,
-    Wire,
-    Tri1,
+    Supply0,
+    Supply1,
     Time,
+    Tri,
+    TriAnd,
+    TriOr,
+    TriReg,
+    Tri0,
+    Tri1,
+    WAnd,
+    Wire,
+    WOr,
 }
 
 #[derive(Debug, PartialEq)]
@@ -66,6 +77,7 @@ impl<'a> Signal<'a> {
             .query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
             .map(|(val, _)| val)
     }
+
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,

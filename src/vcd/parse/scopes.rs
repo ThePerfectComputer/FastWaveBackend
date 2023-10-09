@@ -23,27 +23,49 @@ pub(super) fn parse_var<R: std::io::Read>(
 ) -> Result<(), String> {
     let (word, cursor) = next_word!(word_reader)?;
     let expected_types = [
+        "event",
         "integer",
         "parameter",
         "real",
+        "realtime",
         "reg",
         "string",
-        "wire",
-        "tri1",
+        "supply0",
+        "supply1",
         "time",
+        "tri",
+        "triand",
+        "trior",
+        "trireg",
+        "tri0",
+        "tri1",
+        "wand",
+        "wire",
+        "wor",
     ];
 
     // $var parameter 3 a IDLE $end
     //      ^^^^^^^^^ - var_type
     let var_type = match word {
+        "event" => Ok(SigType::Event),
         "integer" => Ok(SigType::Integer),
         "parameter" => Ok(SigType::Parameter),
         "real" => Ok(SigType::Real),
+        "realtime" => Ok(SigType::RealTime),
         "reg" => Ok(SigType::Reg),
         "string" => Ok(SigType::Str),
-        "wire" => Ok(SigType::Wire),
+        "supply0" => Ok(SigType::Supply0),
+        "supply1" => Ok(SigType::Supply1),
+        "tri" => Ok(SigType::Tri),
+        "triand" => Ok(SigType::TriAnd),
+        "trior" => Ok(SigType::TriOr),
+        "trireg" => Ok(SigType::TriReg),
+        "tri0" => Ok(SigType::Tri0),
         "tri1" => Ok(SigType::Tri1),
         "time" => Ok(SigType::Time),
+        "wand" => Ok(SigType::WAnd),
+        "wire" => Ok(SigType::Wire),
+        "wor" => Ok(SigType::WOr),
         _ => {
             let err = format!(
                 "Error near {}:{} \
