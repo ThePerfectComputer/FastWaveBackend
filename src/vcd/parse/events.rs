@@ -130,7 +130,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                 match signal {
                     SignalEnum::Data {
                         name,
-                        sig_type,
+                        signal_type,
                         ref mut signal_error,
                         num_bits,
                         num_bytes,
@@ -158,7 +158,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                     let (f, l) = (file!(), line!());
                                     let msg = format!("\
                                         Error near {f}:{l}. The bitwidth for signal {name} \
-                                        of sig_type {sig_type:?} is expected to be `{num_bits}` not \
+                                        of signal_type {signal_type:?} is expected to be `{num_bits}` not \
                                         `{observed_num_bits}`. \
                                         This error occurred while parsing the vcd file at \
                                         {cursor:?}");
@@ -171,7 +171,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                 let msg = format!(
                                     "\
                                     Error near {f}:{l}. The bitwidth for signal {name} \
-                                    must be specified for a signal of type {sig_type:?}. \
+                                    must be specified for a signal of type {signal_type:?}. \
                                     This error occurred while parsing the vcd file at \
                                     {cursor:?}"
                                 );
@@ -245,7 +245,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                 match signal {
                     SignalEnum::Data {
                         name,
-                        sig_type,
+                        signal_type,
                         ref mut signal_error,
                         num_bits,
                         num_bytes,
@@ -268,7 +268,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                     let msg = format!(
                                         "\
                                         Error near {f}:{l}. The bitwidth for signal {name} \
-                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        of signal_type {signal_type:?} is expected to be `1` not \
                                         `{num_bits}`. \
                                         This error occurred while parsing the vcd file at \
                                         {cursor:?}"
@@ -282,7 +282,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                 let msg = format!(
                                     "\
                                     Error near {f}:{l}. The bitwidth for signal {name} \
-                                    must be specified for a signal of type {sig_type:?}. \
+                                    must be specified for a signal of type {signal_type:?}. \
                                     This error occurred while parsing the vcd file at \
                                     {cursor:?}"
                                 );
@@ -336,7 +336,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                 match signal {
                     SignalEnum::Data {
                         name,
-                        sig_type,
+                        signal_type,
                         ref mut signal_error,
                         num_bits,
                         num_bytes,
@@ -359,7 +359,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                     let msg = format!(
                                         "\
                                         Error near {f}:{l}. The bitwidth for signal {name} \
-                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        of signal_type {signal_type:?} is expected to be `1` not \
                                         `{num_bits}`. \
                                         This error occurred while parsing the vcd file at \
                                         {cursor:?}"
@@ -373,7 +373,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                 let msg = format!(
                                     "\
                                     Error near {f}:{l}. The bitwidth for signal {name} \
-                                    must be specified for a signal of type {sig_type:?}. \
+                                    must be specified for a signal of type {signal_type:?}. \
                                     This error occurred while parsing the vcd file at \
                                     {cursor:?}"
                                 );
@@ -430,7 +430,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                 match signal {
                     SignalEnum::Data {
                         name,
-                        sig_type,
+                        signal_type,
                         ref mut signal_error,
                         num_bits,
                         string_vals,
@@ -452,7 +452,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                     let msg = format!(
                                         "\
                                         Error near {f}:{l}. The bitwidth for signal {name} \
-                                        of sig_type {sig_type:?} is expected to be `1` not \
+                                        of signal_type {signal_type:?} is expected to be `1` not \
                                         `{num_bits}`. \
                                         This error occurred while parsing the vcd file at \
                                         {cursor:?}"
@@ -466,7 +466,7 @@ pub(super) fn parse_events<R: std::io::Read>(
                                 let msg = format!(
                                     "\
                                     Error near {f}:{l}. The bitwidth for signal {name} \
-                                    must be specified for a signal of type {sig_type:?}. \
+                                    must be specified for a signal of type {signal_type:?}. \
                                     This error occurred while parsing the vcd file at \
                                     {cursor:?}"
                                 );
