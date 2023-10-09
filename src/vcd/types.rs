@@ -7,11 +7,12 @@
 use super::signal::{Signal, SignalEnum};
 use chrono::prelude::{DateTime, Utc};
 use num::BigUint;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Version(pub String);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Timescale {
     Fs,
     Ps,
@@ -20,6 +21,20 @@ pub enum Timescale {
     Ms,
     S,
     Unit,
+}
+
+impl fmt::Display for Timescale {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Timescale::Fs => write!(f, "fs"),
+            Timescale::Ps => write!(f, "ps"),
+            Timescale::Ns => write!(f, "ns"),
+            Timescale::Us => write!(f, "μs"),
+            Timescale::Ms => write!(f, "ms"),
+            Timescale::S => write!(f, "s"),
+            Timescale::Unit => write!(f, "unit"),
+        }
+    }
 }
 
 #[derive(Debug)]
