@@ -492,7 +492,8 @@ pub(super) fn parse_events<R: std::io::Read>(
                     }
                 }?;
             }
-            "s" => {
+            // Store real values as a string as well and let the user parse it to an f64
+            "s" | " S" | "r" | "R" => {
                 let val = word[1..].to_string();
                 let (hash, cursor) = next_word!(word_reader)?;
                 // lokup signal idx
