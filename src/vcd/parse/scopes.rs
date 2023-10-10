@@ -180,9 +180,6 @@ pub(super) fn parse_var<R: std::io::Read>(
                 byte_len_of_num_tmstmp_vals_on_tmln: vec![],
                 byte_len_of_string_tmstmp_vals_on_tmln: vec![],
                 lsb_indxs_of_string_tmstmp_vals_on_tmln: vec![],
-                real_vals: vec![],
-                byte_len_of_real_tmstmp_vals_on_tmln: vec![],
-                lsb_indxs_of_real_tmstmp_vals_on_tmln: vec![],
             };
             (signal, signal_idx)
         }

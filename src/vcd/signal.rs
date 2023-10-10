@@ -38,7 +38,6 @@ pub enum SignalType {
 pub enum SignalValue {
     BigUint(BigUint),
     String(String),
-    Real(f64),
 }
 
 pub struct Signal<'a>(pub(super) &'a SignalEnum);
@@ -95,17 +94,6 @@ impl<'a> Signal<'a> {
             .map(|(val, _)| val)
     }
 
-    pub fn query_real_val_on_tmln(
-        &self,
-        desired_time: &BigUint,
-        vcd: &types::VCD,
-    ) -> Result<f64, SignalErrors> {
-        let Signal(signal_enum) = &self;
-        signal_enum
-            .query_real_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
-            .map(|(val, _)| val)
-    }
-
     pub fn query_val_on_tmln(
         &self,
         desired_time: &BigUint,
@@ -122,27 +110,21 @@ impl<'a> Signal<'a> {
             &vcd.tmstmps_encoded_as_u8s,
             &vcd.all_signals,
         );
-        let real_val = signal_enum.query_real_val_on_tmln(
-            desired_time,
-            &vcd.tmstmps_encoded_as_u8s,
-            &vcd.all_signals,
-        );
 
         // Both num and str will return the newest value that is closest to
         // the desired time. If both have valid values, select the most recent
         // one
-        match (num_val, str_val, real_val) {
-            (_, _, Ok((real_val, real_time))) => Ok((real_time, SignalValue::Real(real_val))),
-            (Ok((num_val, num_time)), Ok((str_val, str_time)), Err(_)) => {
+        match (num_val, str_val) {
+            (Ok((num_val, num_time)), Ok((str_val, str_time))) => {
                 if num_time > str_time {
                     Ok((num_time, SignalValue::BigUint(num_val)))
                 } else {
                     Ok((str_time, SignalValue::String(str_val)))
                 }
             }
-            (Ok((num_val, time)), Err(_), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
-            (Err(_), Ok((str_val, time)), Err(_)) => Ok((time, SignalValue::String(str_val))),
-            (Err(e), _e, _e2) => Err(e),
+            (Ok((num_val, time)), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
+            (Err(_), Ok((str_val, time))) => Ok((time, SignalValue::String(str_val))),
+            (Err(e), _e) => Err(e),
         }
     }
 }
@@ -187,9 +169,6 @@ pub(super) enum SignalEnum {
         byte_len_of_num_tmstmp_vals_on_tmln: Vec<u8>,
         byte_len_of_string_tmstmp_vals_on_tmln: Vec<u8>,
         lsb_indxs_of_string_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
-        real_vals: Vec<f64>,
-        byte_len_of_real_tmstmp_vals_on_tmln: Vec<u8>,
-        lsb_indxs_of_real_tmstmp_vals_on_tmln: Vec<LsbIdxOfTmstmpValOnTmln>,
     },
     Alias {
         name: String,
@@ -364,56 +343,6 @@ impl SignalEnum {
         Ok((timestamp, signal_val))
     }
 
-    /// This function takes an event_idx (which is used to index into the
-    /// global timeline field of a VCD struct instance) and computes
-    /// the time pointed at by event_idx.
-    /// This function also uses the same idx to index into the
-    /// real_vals field of an instance of the Signal::Data variant
-    ///  and gets an f64 value.
-    /// The function returns a tuple of the timestamp and f64 value.
-    fn time_and_real_val_at_event_idx(
-        &self,
-        event_idx: usize,
-        tmstmps_encoded_as_u8s: &Vec<u8>,
-    ) -> Result<(TimeStamp, f64), SignalErrors> {
-        let (
-            real_vals,
-            lsb_indxs_of_real_tmstmp_vals_on_tmln,
-            byte_len_of_real_tmstmp_vals_on_tmln,
-        ) = match self {
-            SignalEnum::Data {
-                real_vals,
-                lsb_indxs_of_real_tmstmp_vals_on_tmln,
-                byte_len_of_real_tmstmp_vals_on_tmln,
-                ..
-            } => Ok((
-                real_vals,
-                lsb_indxs_of_real_tmstmp_vals_on_tmln,
-                byte_len_of_real_tmstmp_vals_on_tmln,
-            )),
-            SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
-        }?;
-
-        // get index
-        let LsbIdxOfTmstmpValOnTmln(timestamp_idx) =
-            lsb_indxs_of_real_tmstmp_vals_on_tmln[event_idx];
-        let timestamp_idx = timestamp_idx as usize;
-
-        if byte_len_of_real_tmstmp_vals_on_tmln.is_empty() {
-            return Err(SignalErrors::EmptyTimeline);
-        }
-
-        // form timestamp
-        let byte_len = byte_len_of_real_tmstmp_vals_on_tmln[event_idx] as usize;
-        let timestamp = &tmstmps_encoded_as_u8s[timestamp_idx..(timestamp_idx + byte_len)];
-        let timestamp = BigUint::from_bytes_le(timestamp);
-
-        // get signal value
-        let signal_val = real_vals[event_idx];
-
-        Ok((timestamp, signal_val))
-    }
-
     fn bits_required(&self) -> Option<u16> {
         match self {
             SignalEnum::Data { num_bits, .. } => *num_bits,
@@ -423,9 +352,9 @@ impl SignalEnum {
     }
 }
 
-// Val, string, and real query functions.
+// Val and string query functions.
 // Function that take in a desired time on the timeline for a
-// specific signal and return a numerical, string, or f64 value in a Result,
+// specific signal and return a numerical or string value in a Result,
 // or an error in a Result.
 impl SignalEnum {
     pub fn query_string_val_on_tmln(
@@ -539,7 +468,6 @@ impl SignalEnum {
 
         Ok((left_val.to_string(), left_time))
     }
-
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,
@@ -658,117 +586,6 @@ impl SignalEnum {
             self.time_and_num_val_at_event_idx(lower_idx - 1, tmstmps_encoded_as_u8s)?;
         let (right_time, _) =
             self.time_and_num_val_at_event_idx(lower_idx, tmstmps_encoded_as_u8s)?;
-
-        let ordered_left = left_time < *desired_time;
-        let ordered_right = *desired_time < right_time;
-        if !(ordered_left && ordered_right) {
-            return Err(SignalErrors::OrderingFailure {
-                lhs_time: left_time,
-                mid_time: desired_time.clone(),
-                rhs_time: right_time,
-            });
-        }
-
-        Ok((left_val, left_time))
-    }
-
-    pub fn query_real_val_on_tmln(
-        &self,
-        desired_time: &BigUint,
-        tmstmps_encoded_as_u8s: &Vec<u8>,
-        all_signals: &Vec<SignalEnum>,
-    ) -> Result<(f64, TimeStamp), SignalErrors> {
-        let signal_idx = match self {
-            Self::Data { self_idx, .. } => {
-                let SignalIdx(idx) = self_idx;
-                *idx
-            }
-            Self::Alias {
-                name: _,
-                signal_alias,
-                path: _,
-            } => {
-                let SignalIdx(idx) = signal_alias;
-                *idx
-            }
-        };
-
-        // if the signal idx points to data variant of the signal,
-        // extract:
-        // 1. the vector of string values
-        // 2. the vector of indices into timeline where events occur
-        //    for this signal
-        // else we propagate Err(..).
-        let (real_vals, lsb_indxs_of_real_tmstmp_vals_on_tmln) = match &all_signals[signal_idx] {
-            SignalEnum::Data {
-                ref real_vals,
-                ref lsb_indxs_of_real_tmstmp_vals_on_tmln,
-                ..
-            } => Ok((real_vals, lsb_indxs_of_real_tmstmp_vals_on_tmln)),
-            SignalEnum::Alias { .. } => Err(SignalErrors::PointsToAlias),
-        }?;
-        // this signal should at least have some events, otherwise, trying to index into
-        // an empty vector later on would fail
-        if lsb_indxs_of_real_tmstmp_vals_on_tmln.is_empty() {
-            return Err(SignalErrors::EmptyTimeline);
-        }
-
-        // the vector of string timeline lsb indices should have the same
-        // length as the vector of string values
-        if real_vals.len() != lsb_indxs_of_real_tmstmp_vals_on_tmln.len() {
-            return Err(SignalErrors::StrTmlnLenMismatch);
-        }
-
-        // check if we're requesting a value that occurs before the recorded
-        // start of the timeline
-        let (timeline_start_time, _) =
-            self.time_and_real_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
-        if *desired_time < timeline_start_time {
-            return Err(SignalErrors::PreTimeline {
-                desired_time: desired_time.clone(),
-                timeline_start_time,
-            });
-        }
-
-        let mut lower_idx = 0usize;
-        let mut upper_idx = lsb_indxs_of_real_tmstmp_vals_on_tmln.len() - 1;
-        let (timeline_end_time, timeline_end_val) =
-            self.time_and_real_val_at_event_idx(upper_idx, tmstmps_encoded_as_u8s)?;
-
-        // check if we're requesting a value that occurs beyond the end of the timeline,
-        // if so, return the last value in this timeline
-        if *desired_time > timeline_end_time {
-            return Ok((timeline_end_val, timeline_end_time));
-        }
-
-        // This while loop is the meat of the lookup. Performance is log2(n),
-        // where n is the number of events on the timeline.
-        // We can assume that by the time we get here, that the desired_time
-        // is an event that occurs on the timeline, given that we handle any events
-        // occuring after or before the recorded tiimeline in the code above.
-        while lower_idx <= upper_idx {
-            let mid_idx = lower_idx + ((upper_idx - lower_idx) / 2);
-            let (curr_time, curr_val) =
-                self.time_and_real_val_at_event_idx(mid_idx, tmstmps_encoded_as_u8s)?;
-            let ordering = curr_time.cmp(desired_time);
-
-            match ordering {
-                std::cmp::Ordering::Less => {
-                    lower_idx = mid_idx + 1;
-                }
-                std::cmp::Ordering::Equal => {
-                    return Ok((curr_val, curr_time));
-                }
-                std::cmp::Ordering::Greater => {
-                    upper_idx = mid_idx - 1;
-                }
-            }
-        }
-
-        let (left_time, left_val) =
-            self.time_and_real_val_at_event_idx(lower_idx - 1, tmstmps_encoded_as_u8s)?;
-        let (right_time, _) =
-            self.time_and_real_val_at_event_idx(lower_idx, tmstmps_encoded_as_u8s)?;
 
         let ordered_left = left_time < *desired_time;
         let ordered_right = *desired_time < right_time;
