@@ -71,10 +71,10 @@ pub(super) fn parse_events<R: std::io::Read>(
             // handle the case of an n bit signal whose value must be parsed
             "b" => {
                 let binary_value = &word[1..];
-                let observed_num_bits = u16::try_from(binary_value.len()).map_err(|_| {
+                let observed_num_bits = u32::try_from(binary_value.len()).map_err(|_| {
                     format!(
                         "Error near {}:{}, {cursor:?}. \
-                        Found signal with more than 2^16 - 1 bits.",
+                        Found signal with more than 2^32 - 1 bits.",
                         file!(),
                         line!()
                     )
@@ -200,11 +200,11 @@ pub(super) fn parse_events<R: std::io::Read>(
                                 format!("Error near {}:{}. num_bytes empty.", file!(), line!())
                             })?;
                             let mut curr_num_bytes =
-                                u8::try_from(value_u8.len()).map_err(|_| {
+                                u16::try_from(value_u8.len()).map_err(|_| {
                                     format!(
                                         "Error near {}:{}. \
                                      Found signal {name} with with value change of greater \
-                                     than 2^16 - 1 bits on {cursor:?}.",
+                                     than 2^32 - 1 bits on {cursor:?}.",
                                         file!(),
                                         line!()
                                     )

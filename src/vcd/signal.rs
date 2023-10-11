@@ -67,7 +67,7 @@ impl<'a> Signal<'a> {
         }
     }
 
-    pub fn num_bits(&self) -> Option<u16> {
+    pub fn num_bits(&self) -> Option<u32> {
         let Signal(signal_enum) = &self;
         signal_enum.bits_required()
     }
@@ -140,8 +140,8 @@ pub(super) enum SignalEnum {
         /// I consider this to be bad behavior. We capture such
         /// errors in the following type:
         signal_error: Option<String>,
-        num_bits: Option<u16>,
-        num_bytes: Option<u8>,
+        num_bits: Option<u32>,
+        num_bytes: Option<u16>,
         /// TODO : may be able to remove self_idx
         self_idx: SignalIdx,
         /// A signal may take on a new value and hold that value
@@ -225,12 +225,12 @@ impl SignalEnum {
     /// Computes the bytes required to store a signal's numerical value
     /// using the num_bits which another function would provide from
     /// the num_bits field of the Signal::Data variant.
-    pub(super) fn bytes_required(num_bits: u16, name: &String) -> Result<u8, String> {
+    pub(super) fn bytes_required(num_bits: u32, name: &String) -> Result<u16, String> {
         let bytes_required = (num_bits / 8) + if (num_bits % 8) > 0 { 1 } else { 0 };
-        let bytes_required = u8::try_from(bytes_required).map_err(|_| {
+        let bytes_required = u16::try_from(bytes_required).map_err(|_| {
             format!(
                 "Error near {}:{}. Signal {name} of length num_bits requires \
-                        {bytes_required} > 256 bytes.",
+                        {bytes_required} > 65536 bytes.",
                 file!(),
                 line!()
             )
@@ -343,7 +343,7 @@ impl SignalEnum {
         Ok((timestamp, signal_val))
     }
 
-    fn bits_required(&self) -> Option<u16> {
+    fn bits_required(&self) -> Option<u32> {
         match self {
             SignalEnum::Data { num_bits, .. } => *num_bits,
             // TODO: Follow aliases?
