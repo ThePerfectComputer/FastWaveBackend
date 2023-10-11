@@ -104,10 +104,10 @@ pub(super) fn parse_var<R: std::io::Read>(
             let num_bits = word
                 .parse::<usize>()
                 .unwrap_or_else(|_| panic!("{}", parse_err));
-            let num_bits = u16::try_from(num_bits).map_err(|_| {
+            let num_bits = u32::try_from(num_bits).map_err(|_| {
                 format!(
                     "Error near {}:{} while parsing vcd file at {cursor:?}. \
-                     This signal has {num_bits} > 2^16 - 1 bits.",
+                     This signal has {num_bits} > 2^32 - 1 bits.",
                     file!(),
                     line!()
                 )
