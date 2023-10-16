@@ -10,7 +10,7 @@ debug = 1
 
 [dependencies]
 num = "0.4"
-clap = { version = "3.1.8", features = ["derive"] }
+clap = { version = "4.4.6", features = ["derive"] }
 chrono = "0.4"
 # TODO : remove itertools once date parser is reworked.
-itertools = "0.10.3"
+itertools = "0.11"

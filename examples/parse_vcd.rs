@@ -10,7 +10,6 @@ use fastwave_backend::parse_vcd;
 #[derive(Parser)]
 struct Cli {
     /// The path to the file to read
-    #[clap(parse(from_os_str))]
     path: std::path::PathBuf,
 }
 

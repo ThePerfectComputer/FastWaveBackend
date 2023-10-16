@@ -27,7 +27,7 @@ fn visit_all_scopes(vcd: &VCD) {
                     let SignalIdx(idx) = signal_idx;
                     indented_print(indent + 1, &format!("{},{}", signal.name(), idx));
                 }
-                visit_all_scope_children(child_scope_idx, vcd.clone(), indent + 1);
+                visit_all_scope_children(child_scope_idx, vcd, indent + 1);
             }
         }
     }
