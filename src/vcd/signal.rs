@@ -48,9 +48,14 @@ impl<'a> Signal<'a> {
         signal_enum.name()
     }
 
-    pub fn name_with_size(&self) -> String {
+    pub fn name_with_index(&self) -> String {
         let Signal(signal_enum) = &self;
         signal_enum.name_with_index()
+    }
+
+    pub fn index(&self) -> Option<String> {
+        let Signal(signal_enum) = &self;
+        signal_enum.index()
     }
 
     pub fn path(&self) -> &[String] {
@@ -238,6 +243,13 @@ impl SignalEnum {
                 ..
             } => format!("{name} {size}"),
             SignalEnum::Alias { name, .. } => name.clone(),
+        }
+    }
+
+    pub fn index(&self) -> Option<String> {
+        match self {
+            SignalEnum::Data { index, .. } => index.clone(),
+            SignalEnum::Alias { .. } => None,
         }
     }
 }
