@@ -126,10 +126,12 @@ pub(super) fn parse_var<R: std::io::Read>(
     // $var parameter 3 a IDLE $end
     //                    ^^^^ - full_signal_name(can extend until $end)
     let mut full_signal_name = Vec::<String>::new();
+    let mut size = None;
     loop {
         let (word, _) = next_word!(word_reader)?;
         match word {
             "$end" => break,
+            other if other.starts_with('[') => size = Some(other.to_string()),
             _ => full_signal_name.push(word.to_string()),
         }
     }
@@ -170,6 +172,7 @@ pub(super) fn parse_var<R: std::io::Read>(
                     .chain([full_signal_name])
                     .collect::<Vec<String>>(),
                 signal_type: var_type,
+                index: size,
                 signal_error: None,
                 num_bits,
                 num_bytes,

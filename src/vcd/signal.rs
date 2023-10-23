@@ -48,6 +48,11 @@ impl<'a> Signal<'a> {
         signal_enum.name()
     }
 
+    pub fn name_with_size(&self) -> String {
+        let Signal(signal_enum) = &self;
+        signal_enum.name_with_index()
+    }
+
     pub fn path(&self) -> &[String] {
         match self.0 {
             SignalEnum::Data { path, .. } => path,
@@ -135,6 +140,9 @@ pub(super) enum SignalEnum {
         name: String,
         path: Vec<String>,
         signal_type: SignalType,
+        /// The optional [start:end] part of the signal name that is sometimes
+        /// added to signals
+        index: Option<String>,
         /// I've seen a 0 bit signal parameter in a xilinx
         /// simulation before that gets assigned 1 bit values.
         /// I consider this to be bad behavior. We capture such
@@ -217,6 +225,20 @@ impl SignalEnum {
             SignalEnum::Alias { .. } => None,
         }
         .clone()
+    }
+
+    pub fn name_with_index(&self) -> String {
+        match self {
+            SignalEnum::Data {
+                name, index: None, ..
+            } => format!("{name}"),
+            SignalEnum::Data {
+                name,
+                index: Some(size),
+                ..
+            } => format!("{name} {size}"),
+            SignalEnum::Alias { name, .. } => name.clone(),
+        }
     }
 }
 
