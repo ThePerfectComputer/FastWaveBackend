@@ -9,7 +9,7 @@ use chrono::prelude::{DateTime, Utc};
 use num::BigUint;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Version(pub String);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

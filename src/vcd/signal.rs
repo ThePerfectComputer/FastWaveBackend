@@ -11,7 +11,7 @@ use num::BigUint;
 #[derive(Debug, Copy, Clone)]
 pub struct LsbIdxOfTmstmpValOnTmln(pub(super) u32);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum SignalType {
     Event,
     Integer,

@@ -5,7 +5,7 @@
 
 mod vcd;
 pub use vcd::parse::parse_vcd;
-pub use vcd::signal::{Signal, SignalType, SignalValue};
+pub use vcd::signal::{Signal, SignalType, SignalValue, SignalErrors};
 pub use vcd::types::{Metadata, Timescale, Version};
 pub use vcd::types::{ScopeIdx, SignalIdx, VCD};
 
