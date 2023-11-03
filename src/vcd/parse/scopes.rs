@@ -289,87 +289,154 @@ fn parse_scopes_inner<R: std::io::Read>(
     // $scope module reg_mag_i $end
     //               ^^^^^^^^^ - scope name
     let (scope_name, _) = next_word!(word_reader)?;
+    // In some cases there are VCD files which have scopes without names.
+    // since these occur in the wild, we'll tolerate them even if it is unclear
+    // if it is supported or not by the spec.
+    if scope_name != "$end" {
+        let mut path = path.clone();
+        path.push(scope_name.to_string());
 
-    let mut path = path.clone();
-    path.push(scope_name.to_string());
+        let curr_scope_idx = ScopeIdx(vcd.all_scopes.len());
 
-    let curr_scope_idx = ScopeIdx(vcd.all_scopes.len());
-
-    // register this scope as a child of the current parent scope
-    // if there is a parent scope, or else we register this scope as
-    // root scope
-    match parent_scope_idx {
-        Some(ScopeIdx(parent_scope_idx)) => {
-            let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx).unwrap();
-            parent_scope.child_scopes.push(curr_scope_idx);
+        // register this scope as a child of the current parent scope
+        // if there is a parent scope, or else we register this scope as
+        // root scope
+        match parent_scope_idx {
+            Some(ScopeIdx(parent_scope_idx)) => {
+                let parent_scope = vcd.all_scopes.get_mut(parent_scope_idx).unwrap();
+                parent_scope.child_scopes.push(curr_scope_idx);
+            }
+            None => vcd.root_scopes.push(curr_scope_idx),
         }
-        None => vcd.root_scopes.push(curr_scope_idx),
-    }
 
-    // add this scope to list of existing scopes
-    vcd.all_scopes.push(Scope {
-        name: scope_name.to_string(),
-        self_idx: curr_scope_idx,
-        child_signals: vec![],
-        child_scopes: vec![],
-    });
+        // add this scope to list of existing scopes
+        vcd.all_scopes.push(Scope {
+            name: scope_name.to_string(),
+            self_idx: curr_scope_idx,
+            child_signals: vec![],
+            child_scopes: vec![],
+        });
 
-    // $scope module reg_mag_i $end
-    //                         ^^^^ - end keyword
-    ident(word_reader, "$end")?;
+        // $scope module reg_mag_i $end
+        //                         ^^^^ - end keyword
+        ident(word_reader, "$end")?;
 
-    loop {
-        let (word, cursor) = next_word!(word_reader)?;
-        let ParseResult { matched, residual } = tag(word, "$");
-        match matched {
-            // we hope that this word starts with a `$`
-            "$" => {
-                match residual {
-                    "scope" => {
-                        // recursive - parse inside of current scope tree
-                        parse_scopes_inner(
-                            word_reader,
-                            Some(curr_scope_idx),
-                            vcd,
-                            signal_map,
-                            &path,
-                        )?;
-                    }
-                    "var" => {
-                        parse_var(word_reader, curr_scope_idx, vcd, signal_map, &path)?;
-                    }
-                    "upscope" => {
-                        ident(word_reader, "$end")?;
-                        break;
-                    }
-                    // we ignore comments
-                    "comment" => loop {
-                        if ident(word_reader, "$end").is_ok() {
+        loop {
+            let (word, cursor) = next_word!(word_reader)?;
+            let ParseResult { matched, residual } = tag(word, "$");
+            match matched {
+                // we hope that this word starts with a `$`
+                "$" => {
+                    match residual {
+                        "scope" => {
+                            // recursive - parse inside of current scope tree
+                            parse_scopes_inner(
+                                word_reader,
+                                Some(curr_scope_idx),
+                                vcd,
+                                signal_map,
+                                &path,
+                            )?;
+                        }
+                        "var" => {
+                            parse_var(word_reader, curr_scope_idx, vcd, signal_map, &path)?;
+                        }
+                        "upscope" => {
+                            ident(word_reader, "$end")?;
                             break;
                         }
-                    },
-                    _ => {
-                        let err = format!(
-                            "Error near {}:{}. \
-                                           found keyword `{residual}` but expected \
-                                           `$scope`, `$var`, `$comment`, or `$upscope` \
-                                           on {cursor:?}",
-                            file!(),
-                            line!()
-                        );
-                        return Err(err);
+                        // we ignore comments
+                        "comment" => loop {
+                            if ident(word_reader, "$end").is_ok() {
+                                break;
+                            }
+                        },
+                        _ => {
+                            let err = format!(
+                                "Error near {}:{}. \
+                                               found keyword `{residual}` but expected \
+                                               `$scope`, `$var`, `$comment`, or `$upscope` \
+                                               on {cursor:?}",
+                                file!(),
+                                line!()
+                            );
+                            return Err(err);
+                        }
                     }
                 }
+                _ => {
+                    let err = format!(
+                        "Error near {}:{}. \
+                                      found keyword `{matched}` but \
+                                      expected `$` on {cursor:?}",
+                        file!(),
+                        line!()
+                    );
+                    return Err(err);
+                }
             }
-            _ => {
-                let err = format!(
-                    "Error near {}:{}. \
-                                  found keyword `{matched}` but \
-                                  expected `$` on {cursor:?}",
-                    file!(),
-                    line!()
-                );
-                return Err(err);
+        }
+    } else {
+        // We'll be conservative and only allow new scopes in this case, and make the nameless
+        // scope completely transparent. I.e.
+        // $scope module a $end
+        //   $scope module $end
+        //     $scope module b $end
+        //       ...
+        //     $upscope
+        //   $upscope
+        // $upscope
+        // will create `a.b`
+        loop {
+            let (word, cursor) = next_word!(word_reader)?;
+            let ParseResult { matched, residual } = tag(word, "$");
+            match matched {
+                // we hope that this word starts with a `$`
+                "$" => {
+                    match residual {
+                        "scope" => {
+                            // recursive - parse inside of current scope tree
+                            parse_scopes_inner(
+                                word_reader,
+                                parent_scope_idx,
+                                vcd,
+                                signal_map,
+                                &path,
+                            )?;
+                        }
+                        "upscope" => {
+                            ident(word_reader, "$end")?;
+                            break;
+                        }
+                        // we ignore comments
+                        "comment" => loop {
+                            if ident(word_reader, "$end").is_ok() {
+                                break;
+                            }
+                        },
+                        _ => {
+                            let err = format!(
+                                "Error near {}:{}. \
+                                               found keyword `{residual}` in annonyoums scope but expected \
+                                               `$scope`, `$comment`, or `$upscope` \
+                                               on {cursor:?}",
+                                file!(),
+                                line!()
+                            );
+                            return Err(err);
+                        }
+                    }
+                }
+                _ => {
+                    let err = format!(
+                        "Error near {}:{}. \
+                                      found keyword `{matched}` but \
+                                      expected `$` on {cursor:?}",
+                        file!(),
+                        line!()
+                    );
+                    return Err(err);
+                }
             }
         }
     }
