@@ -483,7 +483,7 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    let next_time = if mid_idx >= lsb_indxs_of_string_tmstmp_vals_on_tmln.len() {
+                    let next_time = if mid_idx < lsb_indxs_of_string_tmstmp_vals_on_tmln.len()-1 {
                         Some(self.time_and_str_val_at_event_idx(mid_idx+1, tmstmps_encoded_as_u8s)?.0)
                     }
                     else {
@@ -620,7 +620,7 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    let next_time = if mid_idx >= lsb_indxs_of_num_tmstmp_vals_on_tmln.len() {
+                    let next_time = if mid_idx < lsb_indxs_of_num_tmstmp_vals_on_tmln.len() - 1 {
                         Some(self.time_and_num_val_at_event_idx(mid_idx+1, tmstmps_encoded_as_u8s)?.0)
                     }
                     else {
