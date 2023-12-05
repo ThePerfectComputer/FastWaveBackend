@@ -90,7 +90,7 @@ impl<'a> Signal<'a> {
         let Signal(signal_enum) = &self;
         signal_enum
             .query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
-            .map(|(val, _)| val)
+            .map(|(val, _, _)| val)
     }
 
     pub fn query_num_val_on_tmln(
@@ -101,14 +101,14 @@ impl<'a> Signal<'a> {
         let Signal(signal_enum) = &self;
         signal_enum
             .query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
-            .map(|(val, _)| val)
+            .map(|(val, _, _)| val)
     }
 
     pub fn query_val_on_tmln(
         &self,
         desired_time: &BigUint,
         vcd: &types::VCD,
-    ) -> Result<(TimeStamp, SignalValue), SignalErrors> {
+    ) -> Result<(TimeStamp, SignalValue, Option<TimeStamp>), SignalErrors> {
         let Signal(signal_enum) = &self;
         let num_val = signal_enum.query_num_val_on_tmln(
             desired_time,
@@ -125,15 +125,21 @@ impl<'a> Signal<'a> {
         // the desired time. If both have valid values, select the most recent
         // one
         match (num_val, str_val) {
-            (Ok((num_val, num_time)), Ok((str_val, str_time))) => {
+            (Ok((num_val, num_time, num_next)), Ok((str_val, str_time, str_next))) => {
+                let next = match (num_next, str_next) {
+                    (Some(n), Some(s)) => Some(n.min(s)),
+                    (Some(n), None) => Some(n),
+                    (None, Some(s)) => Some(s),
+                    (None, None) => None
+                };
                 if num_time > str_time {
-                    Ok((num_time, SignalValue::BigUint(num_val)))
+                    Ok((num_time, SignalValue::BigUint(num_val), next))
                 } else {
-                    Ok((str_time, SignalValue::String(str_val)))
+                    Ok((str_time, SignalValue::String(str_val), next))
                 }
             }
-            (Ok((num_val, time)), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
-            (Err(_), Ok((str_val, time))) => Ok((time, SignalValue::String(str_val))),
+            (Ok((num_val, time, next)), Err(_)) => Ok((time, SignalValue::BigUint(num_val), next)),
+            (Err(_), Ok((str_val, time, next))) => Ok((time, SignalValue::String(str_val), next)),
             (Err(e), _e) => Err(e),
         }
     }
@@ -396,7 +402,7 @@ impl SignalEnum {
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
         all_signals: &Vec<SignalEnum>,
-    ) -> Result<(String, TimeStamp), SignalErrors> {
+    ) -> Result<(String, TimeStamp, Option<TimeStamp>), SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
                 let SignalIdx(idx) = self_idx;
@@ -458,7 +464,7 @@ impl SignalEnum {
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
         if *desired_time > timeline_end_time {
-            return Ok((timeline_end_val.to_string(), timeline_end_time));
+            return Ok((timeline_end_val.to_string(), timeline_end_time, None));
         }
 
         // This while loop is the meat of the lookup. Performance is log2(n),
@@ -477,7 +483,13 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    return Ok((curr_val.to_string(), curr_time));
+                    let next_time = if mid_idx >= lsb_indxs_of_string_tmstmp_vals_on_tmln.len() {
+                        Some(self.time_and_str_val_at_event_idx(mid_idx+1, tmstmps_encoded_as_u8s)?.0)
+                    }
+                    else {
+                        None
+                    };
+                    return Ok((curr_val.to_string(), curr_time, next_time));
                 }
                 std::cmp::Ordering::Greater => {
                     upper_idx = mid_idx - 1;
@@ -500,14 +512,14 @@ impl SignalEnum {
             });
         }
 
-        Ok((left_val.to_string(), left_time))
+        Ok((left_val.to_string(), left_time, Some(right_time)))
     }
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
         all_signals: &Vec<SignalEnum>,
-    ) -> Result<(BigUint, TimeStamp), SignalErrors> {
+    ) -> Result<(BigUint, TimeStamp, Option<TimeStamp>), SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
                 let SignalIdx(idx) = self_idx;
@@ -589,7 +601,7 @@ impl SignalEnum {
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
         if *desired_time > timeline_end_time {
-            return Ok((timeline_end_val, timeline_end_time));
+            return Ok((timeline_end_val, timeline_end_time, None));
         }
 
         // This while loop is the meat of the lookup. Performance is log2(n),
@@ -608,7 +620,13 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    return Ok((curr_val, curr_time));
+                    let next_time = if mid_idx >= lsb_indxs_of_num_tmstmp_vals_on_tmln.len() {
+                        Some(self.time_and_num_val_at_event_idx(mid_idx+1, tmstmps_encoded_as_u8s)?.0)
+                    }
+                    else {
+                        None
+                    };
+                    return Ok((curr_val, curr_time, next_time));
                 }
                 std::cmp::Ordering::Greater => {
                     upper_idx = mid_idx - 1;
@@ -631,6 +649,6 @@ impl SignalEnum {
             });
         }
 
-        Ok((left_val, left_time))
+        Ok((left_val, left_time, Some(right_time)))
     }
 }
