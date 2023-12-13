@@ -40,6 +40,11 @@ pub enum SignalValue {
     String(String),
 }
 
+pub struct QueryResult<T> {
+    pub current: Option<(TimeStamp, T)>,
+    pub next: Option<TimeStamp>,
+}
+
 pub struct Signal<'a>(pub(super) &'a SignalEnum);
 
 impl<'a> Signal<'a> {
@@ -82,6 +87,9 @@ impl<'a> Signal<'a> {
         signal_enum.bits_required()
     }
 
+    // NOTE: (zoq) I am removing thse because they aren't used in Surfer so I can't test them
+    // properly
+    /*
     pub fn query_string_val_on_tmln(
         &self,
         desired_time: &BigUint,
@@ -90,32 +98,33 @@ impl<'a> Signal<'a> {
         let Signal(signal_enum) = &self;
         signal_enum
             .query_string_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
-            .map(|(val, _)| val)
+            .map(|QueryResult{current, next: _}| current.map(|c| c.1))
     }
 
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,
         vcd: &types::VCD,
-    ) -> Result<BigUint, SignalErrors> {
+    ) -> Result<Option<BigUint>, SignalErrors> {
         let Signal(signal_enum) = &self;
         signal_enum
             .query_num_val_on_tmln(desired_time, &vcd.tmstmps_encoded_as_u8s, &vcd.all_signals)
-            .map(|(val, _)| val)
+            .map(|QueryResult{current, next: _}| current.map(|c| c.1))
     }
+    */
 
     pub fn query_val_on_tmln(
         &self,
         desired_time: &BigUint,
         vcd: &types::VCD,
-    ) -> Result<(TimeStamp, SignalValue), SignalErrors> {
+    ) -> Result<QueryResult<SignalValue>, SignalErrors> {
         let Signal(signal_enum) = &self;
-        let num_val = signal_enum.query_num_val_on_tmln(
+        let num_query_out = signal_enum.query_num_val_on_tmln(
             desired_time,
             &vcd.tmstmps_encoded_as_u8s,
             &vcd.all_signals,
         );
-        let str_val = signal_enum.query_string_val_on_tmln(
+        let str_query_out = signal_enum.query_string_val_on_tmln(
             desired_time,
             &vcd.tmstmps_encoded_as_u8s,
             &vcd.all_signals,
@@ -124,16 +133,44 @@ impl<'a> Signal<'a> {
         // Both num and str will return the newest value that is closest to
         // the desired time. If both have valid values, select the most recent
         // one
-        match (num_val, str_val) {
-            (Ok((num_val, num_time)), Ok((str_val, str_time))) => {
-                if num_time > str_time {
-                    Ok((num_time, SignalValue::BigUint(num_val)))
-                } else {
-                    Ok((str_time, SignalValue::String(str_val)))
+        match (num_query_out, str_query_out) {
+            (Ok(num_result), Ok(str_result)) => {
+                let next = match (num_result.next, str_result.next) {
+                    (Some(n), Some(s)) => Some(n.min(s)),
+                    (Some(n), None) => Some(n),
+                    (None, Some(s)) => Some(s),
+                    (None, None) => None,
+                };
+
+                match (num_result.current, str_result.current) {
+                    (Some((num_time, num_value)), Some((str_time, str_value))) => {
+                        if num_time > str_time {
+                            Ok(QueryResult {
+                                current: Some((num_time, SignalValue::BigUint(num_value))),
+                                next,
+                            })
+                        } else {
+                            Ok(QueryResult {
+                                current: Some((str_time, SignalValue::String(str_value))),
+                                next,
+                            })
+                        }
+                    }
+                    (Some((num_time, num_val)), None) => Ok(QueryResult {
+                        current: Some((num_time, SignalValue::BigUint(num_val))),
+                        next,
+                    }),
+                    (None, Some((str_time, str_value))) => Ok(QueryResult {
+                        current: Some((str_time, SignalValue::String(str_value))),
+                        next,
+                    }),
+                    (None, None) => Ok(QueryResult {
+                        current: None,
+                        next,
+                    }),
                 }
             }
-            (Ok((num_val, time)), Err(_)) => Ok((time, SignalValue::BigUint(num_val))),
-            (Err(_), Ok((str_val, time))) => Ok((time, SignalValue::String(str_val))),
+            (_e, Err(e)) => Err(e),
             (Err(e), _e) => Err(e),
         }
     }
@@ -192,10 +229,6 @@ pub(super) enum SignalEnum {
 
 #[derive(Debug)]
 pub enum SignalErrors {
-    PreTimeline {
-        desired_time: BigUint,
-        timeline_start_time: BigUint,
-    },
     EmptyTimeline,
     TimelineNotMultiple,
     StrTmlnLenMismatch,
@@ -396,7 +429,7 @@ impl SignalEnum {
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
         all_signals: &Vec<SignalEnum>,
-    ) -> Result<(String, TimeStamp), SignalErrors> {
+    ) -> Result<QueryResult<String>, SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
                 let SignalIdx(idx) = self_idx;
@@ -430,7 +463,10 @@ impl SignalEnum {
         // this signal should at least have some events, otherwise, trying to index into
         // an empty vector later on would fail
         if lsb_indxs_of_string_tmstmp_vals_on_tmln.is_empty() {
-            return Err(SignalErrors::EmptyTimeline);
+            return Ok(QueryResult {
+                current: None,
+                next: None
+            });
         }
 
         // the vector of string timeline lsb indices should have the same
@@ -444,9 +480,9 @@ impl SignalEnum {
         let (timeline_start_time, _) =
             self.time_and_str_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
         if *desired_time < timeline_start_time {
-            return Err(SignalErrors::PreTimeline {
-                desired_time: desired_time.clone(),
-                timeline_start_time,
+            return Ok(QueryResult {
+                current: None,
+                next: Some(timeline_start_time),
             });
         }
 
@@ -458,7 +494,10 @@ impl SignalEnum {
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
         if *desired_time > timeline_end_time {
-            return Ok((timeline_end_val.to_string(), timeline_end_time));
+            return Ok(QueryResult {
+                current: Some((timeline_end_time, timeline_end_val.to_string())),
+                next: None,
+            });
         }
 
         // This while loop is the meat of the lookup. Performance is log2(n),
@@ -477,7 +516,21 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    return Ok((curr_val.to_string(), curr_time));
+                    let next_time = if mid_idx < lsb_indxs_of_string_tmstmp_vals_on_tmln.len() - 1 {
+                        Some(
+                            self.time_and_str_val_at_event_idx(
+                                mid_idx + 1,
+                                tmstmps_encoded_as_u8s,
+                            )?
+                            .0,
+                        )
+                    } else {
+                        None
+                    };
+                    return Ok(QueryResult {
+                        current: Some((curr_time, curr_val.to_string())),
+                        next: next_time,
+                    });
                 }
                 std::cmp::Ordering::Greater => {
                     upper_idx = mid_idx - 1;
@@ -500,14 +553,17 @@ impl SignalEnum {
             });
         }
 
-        Ok((left_val.to_string(), left_time))
+        Ok(QueryResult {
+            current: Some((left_time, left_val.to_string())),
+            next: Some(right_time),
+        })
     }
     pub fn query_num_val_on_tmln(
         &self,
         desired_time: &BigUint,
         tmstmps_encoded_as_u8s: &Vec<u8>,
         all_signals: &Vec<SignalEnum>,
-    ) -> Result<(BigUint, TimeStamp), SignalErrors> {
+    ) -> Result<QueryResult<BigUint>, SignalErrors> {
         let signal_idx = match self {
             Self::Data { self_idx, .. } => {
                 let SignalIdx(idx) = self_idx;
@@ -552,7 +608,10 @@ impl SignalEnum {
         // this signal should at least have some events, otherwise, trying to index into
         // an empty vector later on would fail
         if lsb_indxs_of_num_tmstmp_vals_on_tmln.is_empty() {
-            return Err(SignalErrors::EmptyTimeline);
+            return Ok(QueryResult {
+                current: None,
+                next: None
+            });
         }
 
         // assertion that value_sequence is a proper multiple of
@@ -575,9 +634,9 @@ impl SignalEnum {
         let (timeline_start_time, _) =
             self.time_and_num_val_at_event_idx(0, tmstmps_encoded_as_u8s)?;
         if *desired_time < timeline_start_time {
-            return Err(SignalErrors::PreTimeline {
-                desired_time: desired_time.clone(),
-                timeline_start_time,
+            return Ok(QueryResult {
+                current: None,
+                next: Some(timeline_start_time),
             });
         }
 
@@ -589,7 +648,10 @@ impl SignalEnum {
         // check if we're requesting a value that occurs beyond the end of the timeline,
         // if so, return the last value in this timeline
         if *desired_time > timeline_end_time {
-            return Ok((timeline_end_val, timeline_end_time));
+            return Ok(QueryResult {
+                current: Some((timeline_end_time, timeline_end_val)),
+                next: None,
+            });
         }
 
         // This while loop is the meat of the lookup. Performance is log2(n),
@@ -608,7 +670,21 @@ impl SignalEnum {
                     lower_idx = mid_idx + 1;
                 }
                 std::cmp::Ordering::Equal => {
-                    return Ok((curr_val, curr_time));
+                    let next_time = if mid_idx < lsb_indxs_of_num_tmstmp_vals_on_tmln.len() - 1 {
+                        Some(
+                            self.time_and_num_val_at_event_idx(
+                                mid_idx + 1,
+                                tmstmps_encoded_as_u8s,
+                            )?
+                            .0,
+                        )
+                    } else {
+                        None
+                    };
+                    return Ok(QueryResult {
+                        current: Some((curr_time, curr_val)),
+                        next: next_time,
+                    });
                 }
                 std::cmp::Ordering::Greater => {
                     upper_idx = mid_idx - 1;
@@ -631,6 +707,9 @@ impl SignalEnum {
             });
         }
 
-        Ok((left_val, left_time))
+        return Ok(QueryResult {
+            current: Some((left_time, left_val)),
+            next: Some(right_time),
+        });
     }
 }
