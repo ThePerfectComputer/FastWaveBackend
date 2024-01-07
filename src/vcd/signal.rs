@@ -1,3 +1,5 @@
+use std::fmt;
+
 // Copyright (C) 2022 Yehowshua Immanuel
 // This program is distributed under both the GPLV3 license
 // and the YEHOWSHUA license, both of which can be found at
@@ -32,6 +34,13 @@ pub enum SignalType {
     WAnd,
     Wire,
     WOr,
+    SVLogic,
+    SVInt,
+    SVShortInt,
+    SVLongInt,
+    SVChar,
+    SVBit,
+    SVShortReal,
 }
 
 #[derive(Debug, PartialEq)]
@@ -40,9 +49,24 @@ pub enum SignalValue {
     String(String),
 }
 
+impl fmt::Display for SignalValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SignalValue::BigUint(num) =>        { write!(f, "BigUnit: {num}") }
+            SignalValue::String(val) => {write!(f, "String: {val}")}
+        }
+    }
+}
+
 pub struct QueryResult<T> {
     pub current: Option<(TimeStamp, T)>,
     pub next: Option<TimeStamp>,
+}
+
+impl fmt::Display for QueryResult<SignalValue> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(current: {:?}, next: {:?})", self.current, self.next)
+    }
 }
 
 pub struct Signal<'a>(pub(super) &'a SignalEnum);
@@ -465,7 +489,7 @@ impl SignalEnum {
         if lsb_indxs_of_string_tmstmp_vals_on_tmln.is_empty() {
             return Ok(QueryResult {
                 current: None,
-                next: None
+                next: None,
             });
         }
 
@@ -610,7 +634,7 @@ impl SignalEnum {
         if lsb_indxs_of_num_tmstmp_vals_on_tmln.is_empty() {
             return Ok(QueryResult {
                 current: None,
-                next: None
+                next: None,
             });
         }
 
