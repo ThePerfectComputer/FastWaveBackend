@@ -5,8 +5,9 @@
 
 // TODO: we should eventually be able to only test on just
 // the files const
-pub const FILES: [&str; 31] = [
+pub const FILES: [&str; 32] = [
     "./tests/vcd-files/aldec/SPI_Write.vcd",
+    "./tests/vcd-files/fst2vcd/logic.vcd",
     "./tests/vcd-files/ghdl/alu.vcd",
     "./tests/vcd-files/ghdl/idea.vcd",
     "./tests/vcd-files/ghdl/pcpu.vcd",
