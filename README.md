@@ -6,10 +6,7 @@ Imagine being able to visualize a CPU pipeline diagram by merely loading a simul
 Since this project is written in Rust, it should also be able to run in the browser via web-assembly.
 
 # Status
-I hope to work on this more actively again soon.
-
-The Zoq is is working on an excellent frontend call the Surfer. Check it out 
-[here](https://gitlab.com/surfer-project/surfer)!
+As of January 2024, work on the Fastwave Backend is stalled. It has been a fun journey watching Fastwave enable the first iterations of the [surfer waveform viewer](https://surfer-project.org). Now surfer uses an even better backend called [Wellen](https://github.com/ekiwi/wellen?tab=readme-ov-file). Go check it out! I hear it's really good. Perhaps I will soon archive the Fastwave Backend.
 
 Browser demo: https://app.surfer-project.org/
 
