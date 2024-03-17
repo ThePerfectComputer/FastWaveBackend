@@ -1,4 +1,4 @@
-Copyright - Yehowshua Immanuel
+Copyright(2023) - Yehowshua Immanuel
 
 # Vision
 Imagine being able to visualize a CPU pipeline diagram by merely loading a simulation waveform dump, sprinkling in a bit of code, and dragging and dropping some diagram blocks into the visualizer. This project aims to offer such an experience.
