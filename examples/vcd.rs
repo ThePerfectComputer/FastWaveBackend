@@ -73,7 +73,7 @@ fn main() -> std::io::Result<()> {
     let timestamps = vec![31499_000u32, 31500_000u32, 57760_000u32];
     for timestamp in timestamps {
         let time = num::BigUint::from(timestamp);
-        let val = state_signal.query_string_val_on_tmln(&time, &vcd).unwrap();
+        let val = state_signal.query_val_on_tmln(&time, &vcd).unwrap();
         println!("Signal `{name}` has value `{val}` at time `{time}`");
     }
 
