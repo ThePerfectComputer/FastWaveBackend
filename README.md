@@ -1,3 +1,7 @@
+# Migrating !!!
+
+This codebase has now been migrated to https://git.joyofhardware.com/Yehowshua/FastWaveBackend
+
 Copyright(2023) - Yehowshua Immanuel
 
 # Vision
