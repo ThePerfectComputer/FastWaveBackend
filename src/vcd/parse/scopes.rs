@@ -42,6 +42,16 @@ pub(super) fn parse_var<R: std::io::Read>(
         "wand",
         "wire",
         "wor",
+        "int",
+        "int_s",
+        "shortint",
+        "int_l",
+        "longint",
+        "char",
+        "byte",
+        "logic",
+        "bit",
+        "shortreal",
     ];
 
     // $var parameter 3 a IDLE $end
@@ -66,6 +76,15 @@ pub(super) fn parse_var<R: std::io::Read>(
         "wand" => Ok(SignalType::WAnd),
         "wire" => Ok(SignalType::Wire),
         "wor" => Ok(SignalType::WOr),
+        "int" => Ok(SignalType::SVInt),
+        "int_s" => Ok(SignalType::SVShortInt),
+        "shortint" => Ok(SignalType::SVShortInt),
+        "int_l" => Ok(SignalType::SVLongInt),
+        "longint" => Ok(SignalType::SVLongInt),
+        "logic" => Ok(SignalType::SVLogic),
+        "shortreal" => Ok(SignalType::SVShortReal),
+        "byte" => Ok(SignalType::SVChar),
+        "char" => Ok(SignalType::SVChar),
         _ => {
             let err = format!(
                 "Error near {}:{} \
@@ -84,38 +103,19 @@ pub(super) fn parse_var<R: std::io::Read>(
 
     // $var parameter 3 a IDLE $end
     //                ^ - num_bits
-    let num_bits = match var_type {
-        SignalType::Event
-        | SignalType::Integer
-        | SignalType::Parameter
-        | SignalType::Reg
-        | SignalType::Supply0
-        | SignalType::Supply1
-        | SignalType::Tri
-        | SignalType::TriAnd
-        | SignalType::TriOr
-        | SignalType::TriReg
-        | SignalType::Tri0
-        | SignalType::Tri1
-        | SignalType::Time
-        | SignalType::WAnd
-        | SignalType::Wire
-        | SignalType::WOr => {
-            let num_bits = word
-                .parse::<usize>()
-                .unwrap_or_else(|_| panic!("{}", parse_err));
-            let num_bits = u32::try_from(num_bits).map_err(|_| {
-                format!(
-                    "Error near {}:{} while parsing vcd file at {cursor:?}. \
+    let num_bits = {
+        let num_bits = word
+            .parse::<usize>()
+            .unwrap_or_else(|_| panic!("{}", parse_err));
+        let num_bits = u32::try_from(num_bits).map_err(|_| {
+            format!(
+                "Error near {}:{} while parsing vcd file at {cursor:?}. \
                      This signal has {num_bits} > 2^32 - 1 bits.",
-                    file!(),
-                    line!()
-                )
-            })?;
-            Some(num_bits)
-        }
-        // for strings, reals, and realtimes we don't really care what the number of bits is
-        _ => None,
+                file!(),
+                line!()
+            )
+        })?;
+        Some(num_bits)
     };
 
     // $var parameter 3 a IDLE $end
